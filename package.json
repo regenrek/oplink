@@ -20,7 +20,7 @@
 		"docs:build": "pnpm -r --filter './docs/**' build",
 		"docs:llms": "npx repomix docs/oplink-docs/content --include '**/*.md' --ignore '**/1.index.md,index.md,*credits*.md,*oplink*' --output docs/oplink-docs/public/llms_full.txt",
 		"docs:dev": "pnpm -r --filter './docs/**' dev",
-		"test": "vitest",
+		"test": "pnpm run build && vitest",
 		"lint": "biome lint",
 		"biome:write-fix": "biome check --write --unsafe",
 		"publish-npm": "pnpm -r --filter='./packages/oplink' run build && tsx scripts/release.ts",

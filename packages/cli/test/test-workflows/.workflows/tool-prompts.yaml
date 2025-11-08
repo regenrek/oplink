@@ -1,0 +1,8 @@
+tool_prompt_config:
+  description: "Config with tool-specific prompts"
+  tools:
+    tool1:
+      description: "Tool with custom prompt"
+      prompt: "This is a custom prompt for tool1"
+  prompt: |
+    Base prompt.

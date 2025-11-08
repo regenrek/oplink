@@ -105,6 +105,32 @@ describe("MCP Server Configuration Tests", () => {
   indentation problem`
     );
 
+    fs.writeFileSync(
+      path.join(WORKFLOWS_DIR, "tool-prompts.yaml"),
+      `tool_prompt_config:
+  description: "Config with tool-specific prompts"
+  tools:
+    tool1:
+      description: "Tool with custom prompt"
+      prompt: "This is a custom prompt for tool1"
+  prompt: |
+    Base prompt.`
+    );
+
+    fs.writeFileSync(
+      path.join(WORKFLOWS_DIR, "optional-tools.yaml"),
+      `optional_tools_config:
+  description: "Config with optional tools"
+  tools:
+    required_tool:
+      description: "Required tool"
+    optional_tool:
+      description: "Optional tool"
+      optional: true
+  prompt: |
+    Base prompt with optional tools.`
+    );
+
     // Add test YAML files to .mcp-workflows directory
     fs.writeFileSync(
       path.join(MCP_WORKFLOWS_DIR, "custom-mcp-tool.yaml"),
@@ -577,77 +603,26 @@ describe("MCP Server Configuration Tests", () => {
     });
 
     it("N3: Should support tools with prompt property", async () => {
-      // Add a config with tool-specific prompts
-      fs.writeFileSync(
-        path.join(WORKFLOWS_DIR, "tool-prompts.yaml"),
-        `tool_prompt_config:
-  description: "Config with tool-specific prompts"
-  tools:
-    tool1:
-      description: "Tool with custom prompt"
-      prompt: "This is a custom prompt for tool1"
-  prompt: |
-    Base prompt.`
+      await client.connectServer([
+        "--config",
+        path.join(__dirname, "test-workflows", ".workflows"),
+      ]);
+
+      const response = await client.getPrompt("tool_prompt_config");
+      expect(response.content[0].text).toContain(
+        "This is a custom prompt for tool1"
       );
-
-      try {
-        await client.connectServer([
-          "--config",
-          path.join(__dirname, "test-workflows", ".workflows"),
-        ]);
-
-        const response = await client.getPrompt("tool_prompt_config");
-
-        // Check that the response includes the tool prompt
-        expect(response.content[0].text).toContain(
-          "This is a custom prompt for tool1"
-        );
-      } finally {
-        // Clean up
-        const toolPromptsPath = path.join(WORKFLOWS_DIR, "tool-prompts.yaml");
-        if (fs.existsSync(toolPromptsPath)) {
-          fs.unlinkSync(toolPromptsPath);
-        }
-      }
     });
 
     it("N4: Should support optional tools flag", async () => {
-      // Add a config with optional tools
-      fs.writeFileSync(
-        path.join(WORKFLOWS_DIR, "optional-tools.yaml"),
-        `optional_tools_config:
-  description: "Config with optional tools"
-  tools:
-    required_tool:
-      description: "Required tool"
-    optional_tool:
-      description: "Optional tool"
-      optional: true
-  prompt: |
-    Base prompt with optional tools.`
-      );
+      await client.connectServer([
+        "--config",
+        path.join(__dirname, "test-workflows", ".workflows"),
+      ]);
 
-      try {
-        await client.connectServer([
-          "--config",
-          path.join(__dirname, "test-workflows", ".workflows"),
-        ]);
-
-        const response = await client.getPrompt("optional_tools_config");
-
-        // Check for the (Optional) flag in the prompt
-        expect(response.content[0].text).toContain("Optional tool");
-        expect(response.content[0].text).toContain("(Optional)");
-      } finally {
-        // Clean up
-        const optionalToolsPath = path.join(
-          WORKFLOWS_DIR,
-          "optional-tools.yaml"
-        );
-        if (fs.existsSync(optionalToolsPath)) {
-          fs.unlinkSync(optionalToolsPath);
-        }
-      }
+      const response = await client.getPrompt("optional_tools_config");
+      expect(response.content[0].text).toContain("Optional tool");
+      expect(response.content[0].text).toContain("(Optional)");
     });
   });
 });

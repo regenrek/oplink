@@ -1,0 +1,10 @@
+optional_tools_config:
+  description: "Config with optional tools"
+  tools:
+    required_tool:
+      description: "Required tool"
+    optional_tool:
+      description: "Optional tool"
+      optional: true
+  prompt: |
+    Base prompt with optional tools.
