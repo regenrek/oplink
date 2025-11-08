@@ -109,7 +109,7 @@ export default defineCommand({
 				return (process.stderr as any).write(chunk, encoding, cb);
 			};
 
-			let server: Awaited<ReturnType<typeof createMcpServer>>;
+			let server: Awaited<ReturnType<typeof createMcpServer>> | null = null;
 			try {
 				server = await createMcpServer(finalConfig, version, {
 					configDir: configPath,
@@ -118,7 +118,10 @@ export default defineCommand({
 				(process.stdout as any).write = originalWrite;
 			}
 
-			await startServer(server!, presets, configPath);
+			if (!server) {
+				throw new Error("MCP server failed to initialize");
+			}
+			await startServer(server, presets, configPath);
 		} catch (error) {
 			console.error("Failed to start MCP server:", error);
 			process.exit(1);

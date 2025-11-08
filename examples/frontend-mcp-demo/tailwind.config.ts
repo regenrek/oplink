@@ -59,7 +59,7 @@ const config = {
     },
   },
   plugins: [
-    plugin(function ({ addBase }) {
+    plugin(({ addBase }) => {
       addBase({
         ":root": {
           fontFamily: "'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",

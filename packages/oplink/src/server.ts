@@ -983,7 +983,7 @@ function registerDescribeToolsUtility(
 		.refine(
 			(value) =>
 				Boolean(value.workflow) ||
-				(Boolean(value.workflows) && value.workflows!.length > 0),
+				(Boolean(value.workflows) && (value.workflows?.length ?? 0) > 0),
 			{
 				message: "Specify 'workflow' or 'workflows' to scope describe_tools",
 				path: ["workflow"],
