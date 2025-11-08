@@ -256,6 +256,14 @@ export async function registerToolsFromConfig(
 		discoveryCache,
 		options.configDir,
 	);
+
+	registerAuthBootstrapTool(
+		server,
+		registeredNames,
+		discoveryCache,
+		aliasMeta,
+		options.configDir,
+	);
 }
 
 /**
@@ -506,6 +514,11 @@ function registerExternalServerWorkflow(
 			}
 			return await executeExternalTool(alias, toolInfo.name, parsedArgs, configDir);
 		} catch (error) {
+			const authMessage = detectAuthError(error);
+			if (authMessage) {
+				const aliasHint = typeof alias === 'string' ? alias : normalizedAliases[0];
+				return buildAuthReminder(toolName, aliasHint, authMessage);
+			}
 			return buildToolError(error);
 		}
 	};
@@ -1167,4 +1180,115 @@ export function loadAndMergeConfig(
 	);
 
 	return finalConfig;
+}
+function detectAuthError(error: unknown): string | undefined {
+	const message = error instanceof Error ? error.message : String(error ?? "" );
+	const normalized = message.toLowerCase();
+	const keywords = ["oauth", "authorize", "authorization", "authenticate", "credentials", "login"];
+	return keywords.some((keyword) => normalized.includes(keyword)) ? message : undefined;
+}
+
+function buildAuthReminder(workflowName: string, alias: string, detail: string) {
+	const instructions = `Authentication is required for server '${alias}' (${detail}). Run describe_tools({ "workflow": "${workflowName}", "refresh": true }) or call external_auth_setup to start the login flow.`;
+	return {
+		content: [{ type: "text", text: instructions }],
+	};
+}
+
+function registerAuthBootstrapTool(
+	server: McpServer,
+	registeredNames: Set<string>,
+	discoveryCache: ExternalToolCache | undefined,
+	aliasMeta: Map<string, AliasTracker>,
+	configDir?: string,
+): void {
+	if (!discoveryCache || aliasMeta.size === 0) {
+		return;
+	}
+	const toolName = "external_auth_setup";
+	if (registeredNames.has(toolName)) {
+		return;
+	}
+	const knownAliases = [...aliasMeta.keys()];
+	const paramsParser = z
+		.object({
+			aliases: z.array(z.string()).optional(),
+			refresh: z.boolean().optional(),
+		})
+		.optional();
+
+	const handler = async (params?: Record<string, any>) => {
+		if (!configDir) {
+			return {
+				content: [
+					{
+						type: "text",
+						text: "This tool requires --config to be provided when starting Oplink.",
+					},
+				],
+				isError: true,
+			};
+		}
+
+		const parsed = paramsParser?.parse(params ?? {}) ?? {};
+		const refresh = parsed.refresh ?? true;
+		const requested = (parsed.aliases ?? knownAliases).map((alias) => alias.trim()).filter(Boolean);
+		const unknown = requested.filter((alias) => !aliasMeta.has(alias));
+		if (unknown.length > 0) {
+			return {
+				content: [
+					{
+						type: "text",
+						text: `Unknown server alias(es): ${unknown.join(", ")}`,
+					},
+				],
+				isError: true,
+			};
+		}
+
+		const successes: string[] = [];
+		const failures: Array<{ alias: string; message: string }> = [];
+		for (const alias of requested) {
+			try {
+				await discoveryCache.ensureAlias(alias, { forceRefresh: refresh });
+				successes.push(alias);
+			} catch (error) {
+				failures.push({
+					alias,
+					message: error instanceof Error ? error.message : String(error ?? "Unknown error"),
+				});
+			}
+		}
+
+		const summaryLines = [
+			`Initialized ${successes.length}/${requested.length} aliases${refresh ? " (forced refresh)" : ""}.`,
+			"After this step, run describe_tools({ \"workflow\": \"<name>\" }) in your client so agents can see the latest schemas.",
+		];
+		if (successes.length > 0) {
+			summaryLines.push(`✅ ${successes.join(", ")}`);
+		}
+		if (failures.length > 0) {
+			summaryLines.push(
+				`⚠️ Failed aliases:\n${failures
+					.map((failure) => `- ${failure.alias}: ${failure.message}`)
+					.join("\n")}`,
+			);
+		}
+
+		return {
+			content: [{ type: "text", text: summaryLines.join("\n\n") }],
+			isError: failures.length > 0 || undefined,
+		};
+	};
+
+	server.tool(
+		toolName,
+		"Warm up OAuth tokens and cached metadata for external MCP servers.",
+		{
+			aliases: z.array(z.string()).describe("Subset of aliases to initialize").optional(),
+			refresh: z.boolean().describe("Force discovery even if cache is warm").optional(),
+		},
+		handler,
+	);
+	registeredNames.add(toolName);
 }

@@ -336,7 +336,7 @@ describe("MCP Server Configuration Tests", () => {
       await client.connectServer([
         "--config",
         path.join(__dirname, "test-workflows", ".workflows"),
-      ]);
+      ], { cwd: path.join(__dirname, "..", "..") });
       const tools = await client.listTools();
 
       expect(tools.tools).toBeInstanceOf(Array);
@@ -365,7 +365,7 @@ describe("MCP Server Configuration Tests", () => {
       await client.connectServer([
         "--config",
         path.join(__dirname, "test-workflows", ".mcp-workflows"),
-      ]);
+      ], { cwd: path.join(__dirname, "..", "..") });
       const tools = await client.listTools();
 
       expect(tools.tools).toBeInstanceOf(Array);
@@ -379,7 +379,7 @@ describe("MCP Server Configuration Tests", () => {
         path.join(__dirname, "test-workflows", ".workflows"),
         "--preset",
         "coding",
-      ]);
+      ], { cwd: path.join(__dirname, "..", "..") });
       const tools = await client.listTools();
 
       expect(tools.tools).toBeInstanceOf(Array);

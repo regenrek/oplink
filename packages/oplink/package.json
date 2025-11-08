@@ -47,7 +47,7 @@
 		"@anthropic-ai/sdk": "^0.39.0",
 		"@modelcontextprotocol/sdk": "catalog:prod",
 		"js-yaml": "catalog:prod",
-		"mcporter": "^0.3.0",
+		"mcporter": "^0.4.1",
 		"mri": "^1.2.0",
 		"openai": "^4.91.1",
 		"pathe": "^2.0.3",

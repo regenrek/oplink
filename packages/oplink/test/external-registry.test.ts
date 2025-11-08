@@ -142,4 +142,34 @@ describe("loadExternalServerRegistry", () => {
 		});
 		expect(definition?.description).toBe("DeepWiki knowledge base");
 	});
+
+	it("keeps oauth metadata for hosted servers", async () => {
+		await writeRegistry(tempDir, {
+			servers: {
+				linear: {
+					type: "stdio",
+					command: "npx",
+					args: ["-y", "mcp-remote", "https://mcp.linear.app/mcp"],
+					auth: "oauth",
+					oauthRedirectUrl: "http://127.0.0.1:43115/callback",
+					tokenCacheDir: "./.tokens/linear",
+					env: {
+						MCP_REMOTE_CLIENT_ID: "client",
+						MCP_REMOTE_CLIENT_SECRET: "secret",
+					},
+				},
+			},
+		});
+
+		const registry = await loadExternalServerRegistry(tempDir);
+		const linear = registry.servers.get("linear");
+		expect(linear).toBeDefined();
+		expect(linear?.auth).toBe("oauth");
+		expect(linear?.tokenCacheDir).toBe(path.resolve(tempDir, "./.tokens/linear"));
+		expect(linear?.oauthRedirectUrl).toBe("http://127.0.0.1:43115/callback");
+		expect(linear?.env).toEqual({
+			MCP_REMOTE_CLIENT_ID: "client",
+			MCP_REMOTE_CLIENT_SECRET: "secret",
+		});
+	});
 });

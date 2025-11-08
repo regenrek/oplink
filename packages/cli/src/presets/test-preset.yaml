@@ -1,0 +1,6 @@
+test_mode:
+  description: "Test mode for testing data-driven approach"
+  prompt: |
+    # Test Mode
+    This is a test prompt for verifying the data-driven preset approach.
+    No code changes should be needed to add this test mode.

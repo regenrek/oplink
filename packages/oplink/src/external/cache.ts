@@ -145,8 +145,9 @@ async ensureAlias(alias: string, options?: EnsureOptions): Promise<void> {
 			tool = entry.tools.get(normalizedTool);
 		}
 		if (!tool) {
+			const inspectHint = `npx mcporter list ${alias} --config ${this.configDir}`;
 			throw new ExternalServerError(
-				`Server '${alias}' does not expose tool '${normalizedTool}'. Run 'mcporter list ${alias}' to inspect available tools.`,
+				`Server '${alias}' does not expose tool '${normalizedTool}'. Run '${inspectHint}' to inspect available tools.`,
 			);
 		}
 		return tool;

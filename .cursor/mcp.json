@@ -20,6 +20,19 @@
 			"env": {
 				"FRONTEND_ROOT": "/Users/kregenrek/projects/mcp/oplink/examples/frontend-mcp-demo"
 			}
+		},
+		"oplink-linear-discord": {
+			"command": "node",
+			"args": [
+				"/Users/kregenrek/projects/mcp/oplink/packages/cli/bin/oplink.mjs",
+				"server",
+				"--config",
+				"examples/linear-discord-demo/.mcp-workflows"
+			],
+			"env": {
+				"LINEAR_API_KEY": "${LINEAR_API_KEY}",
+				"DISCORD_BOT_TOKEN": "${DISCORD_BOT_TOKEN}"
+			}
 		}
 	}
 }

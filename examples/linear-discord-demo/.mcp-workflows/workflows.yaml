@@ -1,0 +1,98 @@
+# Auto-discovery workflows - expose all Linear and Discord tools
+linear_helper:
+  description: "Access Linear MCP tools for issue management"
+  prompt: |
+    Use Linear MCP tools to query issues, create issues, update status, etc.
+    Call describe_tools({ "workflow": "linear_helper" }) first to see available tools.
+    Then call this workflow with {"tool": "tool_name", "args": {...}}.
+  externalServers:
+    - linear
+
+discord_helper:
+  description: "Access Discord MCP tools for messaging"
+  prompt: |
+    Use Discord MCP tools to send messages, read channels, etc.
+    Call describe_tools({ "workflow": "discord_helper" }) first to see available tools.
+    Then call this workflow with {"tool": "tool_name", "args": {...}}.
+  externalServers:
+    - discord
+
+# Combined workflow for Linear + Discord
+linear_discord_helper:
+  description: "Access both Linear and Discord MCP tools"
+  prompt: |
+    Use Linear and Discord MCP tools together.
+    Call describe_tools({ "workflow": "linear_discord_helper" }) first to see available tools.
+    Then call this workflow with {"tool": "tool_name", "server": "linear" or "discord", "args": {...}}.
+  externalServers:
+    - linear
+    - discord
+
+# Scripted workflow: Get Linear issues for a team
+get_team_issues:
+  description: "Get all issues for a Linear team"
+  runtime: scripted
+  parameters:
+    team_id:
+      type: "string"
+      description: "Linear team ID"
+      required: false
+    state:
+      type: "string"
+      description: "Filter by issue state (e.g., 'In Progress', 'Todo')"
+      required: false
+  steps:
+    - call: linear:list_issues
+      args:
+        teamId: "{{ team_id }}"
+        state: "{{ state }}"
+
+# Scripted workflow: Send Discord message
+send_discord_notification:
+  description: "Send a Discord message to a channel or user"
+  runtime: scripted
+  parameters:
+    channel_id:
+      type: "string"
+      description: "Discord channel ID or user ID for DM"
+      required: true
+    message:
+      type: "string"
+      description: "Message content to send"
+      required: true
+  steps:
+    - call: discord:send_message
+      args:
+        channelId: "{{ channel_id }}"
+        content: "{{ message }}"
+
+# Scripted workflow: Notify assignee about a specific Linear issue
+notify_assignee:
+  description: "Get a Linear issue and send a Discord notification to its assignee"
+  runtime: scripted
+  parameters:
+    issue_id:
+      type: "string"
+      description: "Linear issue ID"
+      required: true
+    discord_user_id:
+      type: "string"
+      description: "Discord user ID to send the message to"
+      required: true
+  steps:
+    - call: linear:get_issue
+      args:
+        issueId: "{{ issue_id }}"
+      save_as: issue
+    - call: discord:send_message
+      args:
+        channelId: "{{ discord_user_id }}"
+        content: |
+          📋 **Linear Issue Assigned to You**
+          
+          **{{ issue.title }}**
+          
+          {{ issue.description || 'No description provided' }}
+          
+          [View in Linear]({{ issue.url }})
+

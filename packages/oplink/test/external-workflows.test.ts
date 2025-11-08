@@ -214,4 +214,62 @@ describe("external server workflows", () => {
 		const tools = payload.workflows[0].aliases[0].tools.map((t: any) => t.name);
 		expect(tools).toEqual(expect.arrayContaining(["take_screenshot", "list_tabs"]));
 	});
+
+	it("registers external_auth_setup helper", async () => {
+		listToolsMock.mockResolvedValue([
+			{
+				name: "take_screenshot",
+				description: "Capture",
+				inputSchema: { type: "object", properties: {} },
+			},
+		]);
+
+		const config = {
+			frontend_debugger: {
+				description: "Chrome DevTools quick access",
+				externalServers: ["chrome-devtools"],
+			},
+		};
+
+		await registerToolsFromConfig(server as any, config, { configDir: "/tmp/config" });
+
+		const helper = registrations.find((r) => r.name === "external_auth_setup");
+		expect(helper).toBeDefined();
+
+		listToolsMock.mockClear();
+		listToolsMock.mockResolvedValue([
+			{ name: "take_screenshot" },
+		]);
+
+		const response = await helper!.handler();
+		expect(listToolsMock).toHaveBeenCalled();
+		expect(response.content[0].text).toContain("Initialized");
+	});
+
+	it("suggests describe_tools when OAuth auth fails", async () => {
+		listToolsMock.mockResolvedValue([
+			{
+				name: "take_screenshot",
+				description: "Capture",
+				inputSchema: { type: "object", properties: {} },
+			},
+		]);
+
+		const config = {
+			frontend_debugger: {
+				description: "Chrome DevTools quick access",
+				externalServers: ["chrome-devtools"],
+			},
+		};
+
+		await registerToolsFromConfig(server as any, config, { configDir: "/tmp/config" });
+
+		const workflow = registrations.find((r) => r.name === "frontend_debugger");
+		expect(workflow).toBeDefined();
+
+		executeExternalToolMock.mockRejectedValueOnce(new Error("OAuth authorization required"));
+		const response = await workflow!.handler({ tool: "take_screenshot" });
+		expect(response.content[0].text).toContain('describe_tools({ "workflow": "frontend_debugger"');
+		expect(response.isError).toBeUndefined();
+	});
 });

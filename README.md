@@ -313,10 +313,43 @@ MCP Client → Oplink → mcporter Runtime → External MCP Server → Result
 
 External tools are discovered at startup, cached with schema hashes, and exposed through the `describe_tools` helper instead of flooding the MCP client with dozens of proxied commands. The cache automatically refreshes when it expires, and you can trigger a manual refresh by calling `describe_tools({ "workflow": "name", "refresh": true })` if the upstream server changes.
 
+### Connecting to hosted MCP servers (OAuth)
+
+Hosted providers like Linear expose MCP servers over HTTPS/SSE and expect an OAuth flow. mcporter 0.4+ already handles the browser/device dance, so you just need one config entry per server:
+
+```json
+"linear": {
+  "type": "stdio",
+  "command": "npx",
+  "args": ["-y", "mcp-remote", "https://mcp.linear.app/mcp"],
+  "auth": "oauth",
+  "clientName": "oplink-linear-demo",
+  "oauthRedirectUrl": "http://127.0.0.1:43115/callback",
+  "tokenCacheDir": "./.tokens/linear",
+  "env": {
+    "MCP_REMOTE_CLIENT_ID": "${LINEAR_CLIENT_ID}",
+    "MCP_REMOTE_CLIENT_SECRET": "${LINEAR_CLIENT_SECRET}"
+  }
+}
+```
+
+Notes:
+
+1. `type: "stdio"` + `npx mcp-remote` lets Oplink spawn the hosted server even though it lives on HTTPS.
+2. mcporter caches refresh tokens under `tokenCacheDir`, so the OAuth prompt only happens once.
+3. Skip the client ID/secret prompts if you prefer dynamic registration—mcporter will open a browser during the first tool call.
+4. Run `pnpm bootstrap:linear` to copy the example config and (optionally) inject your credentials into `examples/linear-discord-demo/.mcp-workflows/servers.json`.
+
+To inspect the tools exposed by any alias, reuse the same config directory:
+
+```bash
+npx mcporter list linear --config examples/linear-discord-demo/.mcp-workflows
+```
+
 ## Requirements
 
 - Node.js 18+ or 20+
-- Optional: mcporter CLI for local inspection (`npx mcporter list <alias>`)
+- Optional: mcporter CLI for local inspection (`npx mcporter list <alias> --config path/to/.mcp-workflows`)
 - MCP client (Cursor, Claude Desktop, etc.)
 
 ## Troubleshooting
