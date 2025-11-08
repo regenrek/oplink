@@ -34,6 +34,21 @@ export interface ToolConfig {
 export type PromptTools = Record<string, string | ToolConfig> | string;
 
 /** Configuration for a specific prompt */
+export interface StepConfig {
+	/** Fully-qualified tool name (alias:tool) */
+	call: string;
+	/** Optional description used in logs */
+	description?: string;
+	/** Arguments passed to the external tool */
+	args?: Record<string, unknown>;
+	/** Optional context key to store the step result under */
+	saveAs?: string;
+	/** Optional parameter name that must be truthy to execute this step */
+	requires?: string;
+	/** Suppress per-step log output */
+	quiet?: boolean;
+}
+
 export interface PromptConfig {
 	/** If provided, completely replaces the default prompt */
 	prompt?: string;
@@ -51,8 +66,10 @@ export interface PromptConfig {
 	name?: string;
 	/** Parameters that the tool accepts */
 	parameters?: Record<string, ParameterConfig>;
-	/** External MCP servers whose tools should be auto-registered as server:tool proxies */
-	externalServers?: string[];
+	/** Execution runtime (prompt = legacy, scripted = internal orchestration) */
+	runtime?: "prompt" | "scripted";
+	/** Declarative steps for scripted workflows */
+	steps?: StepConfig[];
 }
 
 /** Main configuration interface for all developer tools */

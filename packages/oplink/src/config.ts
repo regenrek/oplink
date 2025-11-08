@@ -2,7 +2,12 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import * as yaml from "js-yaml";
 import { z } from "zod";
-import type { DevToolsConfig, ParameterConfig, PromptConfig } from "./@types/config";
+import type {
+	DevToolsConfig,
+	ParameterConfig,
+	PromptConfig,
+	StepConfig,
+} from "./@types/config";
 import { loadAvailablePresets } from "./preset"; // or wherever your preset loader is
 
 // Default empty configuration
@@ -298,19 +303,41 @@ export function validateToolConfig(
 		}
 
 		if (toolName.includes(":")) {
-			return validateProxyToolConfig(toolName, toolConfig);
+			return `Tool name "${toolName}" must not contain ':' (define steps with alias:tool instead).`;
 		}
 
 		if (toolConfig.name && toolConfig.name.includes(":")) {
 			return `Custom name for tool "${toolName}" must not contain ':'`;
 		}
 
+	const runtime = toolConfig.runtime ?? (toolConfig.steps ? "scripted" : "prompt");
+	const hasExternalServers =
+		Array.isArray(toolConfig.externalServers) &&
+		toolConfig.externalServers.length > 0;
+
+	if (hasExternalServers) {
 		const externalServersError = validateExternalServersField(
 			toolConfig.externalServers,
 			toolName,
 		);
 		if (externalServersError) {
 			return externalServersError;
+		}
+		if (runtime === "scripted") {
+			return `Tool "${toolName}" cannot use externalServers when runtime is scripted`;
+		}
+		if (toolConfig.steps && toolConfig.steps.length > 0) {
+			return `Tool "${toolName}" cannot define steps when externalServers is set`;
+		}
+	}
+	if (runtime === "scripted") {
+		if (!toolConfig.steps || toolConfig.steps.length === 0) {
+			return `Tool "${toolName}" is scripted but has no steps defined`;
+		}
+		const stepsError = validateStepsConfig(toolConfig.steps, toolName);
+			if (stepsError) {
+				return stepsError;
+			}
 		}
 
 		// If the tool has parameters, validate them
@@ -397,28 +424,29 @@ export function validateToolConfig(
 	}
 }
 
-function validateProxyToolConfig(
-	toolName: string,
-	toolConfig: PromptConfig,
-): string | null {
-	const parts = toolName.split(":");
-	if (parts.length !== 2 || parts[0].trim().length === 0 || parts[1].trim().length === 0) {
-		return `External proxy tool "${toolName}" must use the format server:tool (single ':')`;
+function validateStepsConfig(steps: StepConfig[], toolName: string): string | null {
+		if (!Array.isArray(steps) || steps.length === 0) {
+		return `Tool "${toolName}" must define at least one step`;
 	}
 
-	const forbiddenKeys: Array<keyof PromptConfig> = [
-		"prompt",
-		"context",
-		"tools",
-		"toolMode",
-		"parameters",
-		"externalServers",
-		"name",
-	];
-
-	for (const key of forbiddenKeys) {
-		if (toolConfig[key] !== undefined) {
-			return `External proxy "${toolName}" cannot define '${key}'`;
+	for (const [index, step] of steps.entries()) {
+		if (!step || typeof step !== "object") {
+			return `Step #${index + 1} in "${toolName}" must be an object`;
+		}
+		if (!step.call || typeof step.call !== "string" || !step.call.includes(":")) {
+			return `Step #${index + 1} in "${toolName}" must define 'call' in server:tool format`;
+		}
+		if (step.args && typeof step.args !== "object") {
+			return `Step #${index + 1} in "${toolName}" has invalid 'args' (must be an object)`;
+		}
+		if (step.saveAs && typeof step.saveAs !== "string") {
+			return `Step #${index + 1} in "${toolName}" has invalid 'saveAs' (must be string)`;
+		}
+		if (step.requires && typeof step.requires !== "string") {
+			return `Step #${index + 1} in "${toolName}" has invalid 'requires' (must be string)`;
+		}
+		if (step.quiet !== undefined && typeof step.quiet !== "boolean") {
+			return `Step #${index + 1} in "${toolName}" has invalid 'quiet' flag (must be boolean)`;
 		}
 	}
 
@@ -623,8 +651,9 @@ export function convertParametersToZodSchema(
 	for (const [name, param] of Object.entries(parameters)) {
 		let schema = convertParameterToZodSchema(param);
 
-		// If parameter is required, don't add .optional()
-		if (!param.required) {
+		if (param.default !== undefined) {
+			schema = schema.default(param.default);
+		} else if (!param.required) {
 			schema = schema.optional();
 		}
 
@@ -704,11 +733,6 @@ export function convertParameterToZodSchema(
 	// Add description if available
 	if (param.description) {
 		schema = schema.describe(param.description);
-	}
-
-	// Add default value if specified
-	if (param.default !== undefined) {
-		schema = schema.default(param.default);
 	}
 
 	return schema;

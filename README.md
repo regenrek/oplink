@@ -132,71 +132,110 @@ External tools are resolved through `.mcp-workflows/servers.json`. Each entry ma
 }
 ```
 
-The alias (`context7`, `grafana`, etc.) becomes the `server` prefix in `server:tool` names and in the `externalServers` array. Startup fails if an alias referenced in your workflows is missing, the registry is malformed, or an environment placeholder cannot be resolved.
+The alias (`context7`, `grafana`, etc.) becomes the `server` prefix when you reference an external tool inside a scripted workflow step (for example, `chrome-devtools:take_screenshot`). Startup fails if an alias referenced in your workflows is missing, the registry is malformed, or an environment placeholder cannot be resolved.
 
 See `examples/context7-demo/` (Context7) and `examples/deepwiki-demo/` (DeepWiki) for ready-to-run setups that wire real MCP servers into Oplink via this registry + workflow pair.
 
-### External Server Integration
+### Auto Workflows (zero config)
 
-Reference tools from external servers using `server:tool` format (aliases come from `servers.json`):
+To expose an MCP server without writing custom steps, declare a workflow with `externalServers`. Oplink now exposes one tool per workflow **and** ships a built-in `describe_tools` helper so agents can dynamically discover the proxied commands. The recommended flow is:
 
-```yaml
-dev_workflow:
-  description: "Development workflow"
-  prompt: "Use available tools to complete the task"
-  tools: filesystem:read_file, filesystem:write_file, github:create_issue
-```
+1. Call `describe_tools({ "workflow": "frontend_debugger" })` to retrieve the cached catalog (names, descriptions, JSON schemas, last refresh time).
+2. Pick a tool from the response and invoke the workflow with `{ "tool": "name", "args": { ... } }`.
 
-Auto-discover all tools from external servers:
+Every auto workflow prompt automatically appends a reminder to run `describe_tools` first, so you don't have to mention it manually—though you can still customize the prompt text if you want to provide extra context.
 
 ```yaml
-production_workflow:
-  description: "Production incident response"
-  prompt: "Investigate and resolve the incident"
+frontend_debugger:
+  description: "Chrome DevTools helper"
+  prompt: |
+    Use Chrome DevTools MCP tools (e.g., take_screenshot, list_network_requests).
+    Provide {"tool": "name", "args": { ... }} when calling this workflow.
   externalServers:
-    - filesystem
-    - github
-    - monitoring
-  tools: analyzeCode  # Can mix with manual references
+    - chrome-devtools
+
+shadcn_helper:
+  description: "shadcn helper"
+  prompt: |
+    Use shadcn MCP tools to list/search components.
+  externalServers:
+    - shadcn
+
+full_helper:
+  description: "Chrome DevTools + shadcn"
+  prompt: |
+    Access Chrome DevTools and shadcn MCP tools from one workflow.
+  externalServers:
+    - chrome-devtools
+    - shadcn
 ```
 
-### Workflow Scope vs Tool Exposure
+Call the workflow with:
 
-- If you use `externalServers`, Oplink will auto-register the entire tool catalog from those servers (useful for broad integrations like DeepWiki).
-- To keep the tool list small, declare only the proxies you need at the top level and reference them from workflows. Example (Chrome DevTools subset used by the frontend demo):
+- `tool`: the tool name (e.g., `take_screenshot` or `chrome-devtools:take_screenshot`).
+- `server`: optional unless you configured multiple aliases (like `full_helper`) and didn’t prefix the tool.
+- `args`: arguments object forwarded to the MCP tool.
+
+```json
+describe_tools({
+  "workflow": "frontend_debugger"
+})
+
+frontend_debugger({
+  "tool": "take_screenshot",
+  "args": {
+    "url": "https://example.com",
+    "format": "png"
+  }
+})
+```
+
+`describe_tools` accepts optional filters such as `aliases`, `search`, `limit`, and `refresh`. Set `refresh: true` if you need to force a re-discovery after changing the upstream MCP server. Use auto workflows for quick wiring, then switch to scripted workflows (below) when you need curated flows, defaults, or multi-step orchestration.
+
+### Scripted Workflow Steps
+
+Modern Oplink workflows run entirely on the server: you declare the external steps to execute, and the MCP client only sees the high-level tool (e.g., `frontend_debugger`). Each step references an external MCP tool using the `alias:tool` format from `servers.json` and can template arguments from workflow parameters.
 
 ```yaml
-chrome-devtools:navigate_page:
-  description: "Navigate pages (url/back/forward/reload)"
-chrome-devtools:performance_start_trace:
-  description: "Start a performance trace"
-chrome-devtools:performance_stop_trace:
-  description: "Stop the performance trace"
-chrome-devtools:list_network_requests:
-  description: "List recent network requests"
-chrome-devtools:list_console_messages:
-  description: "List console logs"
-chrome-devtools:take_screenshot:
-  description: "Capture a screenshot"
+take_screenshot:
+  description: "Capture screenshots for docs or testing"
+  runtime: scripted
+  parameters:
+    url:
+      type: string
+      required: true
+    wait_for:
+      type: string
+      description: "Optional text to wait for"
+    format:
+      type: string
+      enum: [png, jpeg, webp]
+      default: png
+  steps:
+    - call: chrome-devtools:navigate_page
+      args:
+        type: url
+        url: "{{ url }}"
+        ignoreCache: false
+    - call: chrome-devtools:wait_for
+      requires: wait_for
+      args:
+        text: "{{ wait_for }}"
+        timeout: 10000
+    - call: chrome-devtools:take_screenshot
+      args:
+        fullPage: true
+        format: "{{ format }}"
 ```
 
-Then reference those names in your workflow `tools:` list.
+- `runtime: scripted` tells Oplink to execute these steps server-side via mcporter.
+- `requires` skips the step unless the named parameter (or saved value) is truthy.
+- Arguments can use `{{ paramName }}` templating.
+- Only the workflow tool (`take_screenshot`) is exposed to the MCP client; the chrome-devtools helpers stay internal.
+- Defaulted parameters like `format` keep the happy path simple (no extra args) while allowing overrides when you need a different image type.
+- Add `quiet: true` to a step if you don’t want the runner to emit "Step X" logs for that call (useful for screenshot steps that already return binary content).
 
-### Sequential vs Situational Tools
-
-**Situational (default)**: Tools used as needed
-```yaml
-workflow:
-  toolMode: "situational"
-  tools: "tool1, tool2, tool3"
-```
-
-**Sequential**: Tools executed in order
-```yaml
-workflow:
-  toolMode: "sequential"
-  tools: "tool1, tool2, tool3"
-```
+Prompt-driven workflows (with `prompt`, `tools`, and `toolMode`) still work for legacy setups, but scripted workflows are the new default for minimizing context exposure.
 
 ### Parameter Injection
 
@@ -264,15 +303,15 @@ analysis_workflow:
 
 Oplink uses mcporter under the hood to connect to external MCP servers, but it reads the registry from `.mcp-workflows/servers.json` in your chosen `--config` directory.
 1. Define servers in `.mcp-workflows/servers.json` (see the examples above)
-2. Reference tools as `server:tool` in workflow configs
-3. Oplink registers only the tools you specify (or all, if you use `externalServers`)
+2. Reference tools as `server:tool` inside scripted workflow steps
+3. Only the workflow tools themselves are exposed to the MCP client; helper tools remain internal
 
 **Tool Call Flow:**
 ```
 MCP Client → Oplink → mcporter Runtime → External MCP Server → Result
 ```
 
-Tools are discovered at startup and registered with the `server:tool` naming convention. External tools use their original `inputSchema` from the source server.
+External tools are discovered at startup, cached with schema hashes, and exposed through the `describe_tools` helper instead of flooding the MCP client with dozens of proxied commands. The cache automatically refreshes when it expires, and you can trigger a manual refresh by calling `describe_tools({ "workflow": "name", "refresh": true })` if the upstream server changes.
 
 ## Requirements
 
@@ -285,6 +324,7 @@ Tools are discovered at startup and registered with the `server:tool` naming con
 - Missing `FRONTEND_ROOT` (shadcn): set `export FRONTEND_ROOT=$(pwd)/examples/frontend-mcp-demo` or set it under your MCP client entry's `env` block.
 - Chrome won’t launch: ensure Chrome is installed and starts locally. For remote/debugging Chrome, launch it separately and update the Chrome DevTools server flags per its docs.
 - No tools appear: confirm `--config` points to the intended `.mcp-workflows` directory and your IDE picked up the MCP server entry.
+- Tool catalog looks stale: run `describe_tools({ "workflow": "name", "refresh": true })` to force a re-discovery after changing the upstream MCP server.
 
 ## Development
 
@@ -319,3 +359,4 @@ MIT
 ## Repository
 
 https://github.com/instructa/oplink
+- Chrome DevTools screenshot errors: if a workflow calls `chrome-devtools:take_screenshot` without specifying `format`, DevTools rejects the request. The provided examples set a default (`png`) and let you override it via the `format`/`screenshot_format` parameter.

@@ -4,8 +4,7 @@ import type { TemplateParams } from "./common";
 
 /** Represents a single item in the content array returned by a tool */
 export interface ToolResultContentItem {
-	type: "text";
-	text: string;
+	type: string;
 	[x: string]: unknown;
 }
 

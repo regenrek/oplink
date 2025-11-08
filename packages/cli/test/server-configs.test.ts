@@ -261,9 +261,10 @@ describe("MCP Server Configuration Tests", () => {
       await client.connectServer(["--preset", "nonexistent"]);
       const tools = await client.listTools();
 
-      // Server should start, but no tools are registered
+      // Server should start with only the describe_tools helper
       expect(tools.tools).toBeInstanceOf(Array);
-      expect(tools.tools.length).toBe(0);
+      const toolNames = tools.tools.map((t: any) => t.name);
+      expect(toolNames).toEqual(["describe_tools"]);
     });
 
     it("P6: Mixed valid/invalid presets - should load tools from valid preset only", async () => {
@@ -370,7 +371,8 @@ describe("MCP Server Configuration Tests", () => {
       const tools = await client.listTools();
 
       expect(tools.tools).toBeInstanceOf(Array);
-      expect(tools.tools.length).toBe(0);
+      const toolNames = tools.tools.map((t: any) => t.name);
+      expect(toolNames).toEqual(["describe_tools"]);
     });
 
     it("C4: Config path is not .workflows - should not load thinking preset", async () => {
@@ -381,7 +383,8 @@ describe("MCP Server Configuration Tests", () => {
       const tools = await client.listTools();
 
       expect(tools.tools).toBeInstanceOf(Array);
-      expect(tools.tools.length).toBe(0);
+      const toolNames = tools.tools.map((t: any) => t.name);
+      expect(toolNames).toEqual(["describe_tools"]);
     });
 
     it("C5: Empty config directory - should not load thinking preset", async () => {
@@ -392,7 +395,8 @@ describe("MCP Server Configuration Tests", () => {
       const tools = await client.listTools();
 
       expect(tools.tools).toBeInstanceOf(Array);
-      expect(tools.tools.length).toBe(0);
+      const toolNames = tools.tools.map((t: any) => t.name);
+      expect(toolNames).toEqual(["describe_tools"]);
     });
   });
 
