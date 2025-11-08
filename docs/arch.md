@@ -45,7 +45,7 @@ flowchart LR
 
   %% Notes
   classDef note fill:#f6f8fa,stroke:#d0d7de,color:#24292f;
-  N1[Explicit proxies keep tool list small; using externalServers auto-registers full catalogs.]:::note
+  N1[Only workflow tools are exposed to the MCP client; helper tools stay internal.]:::note
   N2[mcporter handles discovery, auth, stdio/http transport, retries, and connection reuse.]:::note
   O1 --- N1
   M1 --- N2
@@ -55,7 +55,7 @@ flowchart LR
 
 1. The MCP client invokes an Oplink workflow with parameters.
 2. Oplink loads workflow definitions and the external server registry in the selected `--config` directory.
-3. At startup, Oplink validates/ registers only the tools you declare (or all, if `externalServers` is used).
+3. At startup, Oplink validates the scripted steps and loads the required external tool schemas via mcporter.
 4. When the prompt calls a tool, Oplink forwards the request to mcporter.
 5. mcporter launches/connects to the external MCP server and executes the tool.
 6. Results stream back to Oplink, which aggregates them and returns the final response to the MCP client.
