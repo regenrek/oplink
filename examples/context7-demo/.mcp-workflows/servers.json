@@ -1,4 +1,5 @@
 {
+  "$schema": "../../schema/oplink-servers.schema.json",
   "servers": {
     "context7": {
       "type": "stdio",

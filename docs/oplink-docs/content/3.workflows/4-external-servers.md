@@ -1,0 +1,46 @@
+---
+title: External Servers & Registry
+description: Register external MCP servers and wire them into workflows
+---
+
+External MCP servers are declared in `.mcp-workflows/servers.json`. Each entry maps a friendly alias (e.g., `linear`) to either an stdio command or an HTTP endpoint.
+
+Example (stdio + OAuth)
+
+```json
+{
+  "servers": {
+    "linear": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "mcp-remote", "https://mcp.linear.app/mcp"],
+      "auth": "oauth",
+      "clientName": "oplink-linear-demo",
+      "oauthRedirectUrl": "http://127.0.0.1:22228/oauth/callback",
+      "tokenCacheDir": "./.tokens/linear",
+      "description": "Linear hosted MCP server"
+    }
+  }
+}
+```
+
+Rules
+
+- Unresolved `${VAR}` placeholders fail startup (by design). Export them or remove the env block.
+- `tokenCacheDir` is resolved relative to the config dir.
+- `servers.json` must contain at least one server.
+
+OAuth flow cheatsheet
+
+- Start Oplink with `--config` pointing at your `.mcp-workflows`.
+- In your IDE, run `describe_tools({ "workflow": "name" })` or call `external_auth_setup()` once.
+- Complete the browser/device flow; tokens will be cached under `.tokens/<alias>`.
+
+Auto‑discovery vs scripted
+
+- Use auto‑discovery when you want to expose all tools from an alias quickly.
+- Use scripted when you want curated steps, defaults, or composition across aliases.
+
+See also
+
+- Advanced: [Registry](/5.advanced/1.registry), [mcporter](/5.advanced/mcporter), [authentication](/5.advanced/authentication)

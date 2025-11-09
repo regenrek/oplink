@@ -203,7 +203,14 @@ export async function registerToolsFromConfig(
 			options.cacheOptions,
 		);
 		await discoveryCache.restore();
-		await discoveryCache.ensureAliases(aliasMeta.keys());
+		try {
+			await discoveryCache.ensureAliases(aliasMeta.keys());
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
+			console.error(
+				`Warning: failed to initialize external aliases at startup. You can run external_auth_setup or describe_tools later. Details: ${message}`,
+			);
+		}
 	} else if (options.configDir) {
 		discoveryCache = new ExternalToolCache(
 			options.configDir,

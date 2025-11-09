@@ -313,6 +313,10 @@ MCP Client → Oplink → mcporter Runtime → External MCP Server → Result
 
 External tools are discovered at startup, cached with schema hashes, and exposed through the `describe_tools` helper instead of flooding the MCP client with dozens of proxied commands. The cache automatically refreshes when it expires, and you can trigger a manual refresh by calling `describe_tools({ "workflow": "name", "refresh": true })` if the upstream server changes.
 
+See also:
+- Advanced: How Oplink Uses mcporter → `docs/oplink-docs/content/5.advanced/3-mcporter.md`
+- Advanced: Auth for External MCP Servers (API Key, OAuth) → `docs/oplink-docs/content/5.advanced/4-authentication.md`
+
 ### Connecting to hosted MCP servers (OAuth)
 
 Hosted providers like Linear expose MCP servers over HTTPS/SSE and expect an OAuth flow. mcporter 0.4+ already handles the browser/device dance, so you just need one config entry per server:
@@ -344,6 +348,8 @@ To inspect the tools exposed by any alias, reuse the same config directory:
 
 ```bash
 npx mcporter list linear --config examples/linear-discord-demo/.mcp-workflows
+
+For Discord in the demo, export `DISCORD_BOT_TOKEN` in your shell; Oplink maps it to `DISCORD_TOKEN` for the MCP server defined in `examples/linear-discord-demo/.mcp-workflows/servers.json`.
 ```
 
 ## Requirements

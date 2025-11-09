@@ -7,4 +7,6 @@ export const commands = {
 	init: () => import("./init").then(_rDefault),
 	config: () => import("./config").then(_rDefault),
 	server: () => import("./server").then(_rDefault),
+	validate: () => import("./validate").then(_rDefault),
+	scaffold: () => import("./scaffold").then(_rDefault),
 } as const;

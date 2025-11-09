@@ -1,0 +1,120 @@
+# yaml-language-server: $schema=../../../schema/oplink-workflows.schema.json
+
+# Auto-discovery workflows
+jira_helper:
+  description: "Access Jira MCP tools for issue management"
+  prompt: |
+    Use Jira MCP tools to search issues, create issues, update status, add comments, etc.
+    Call describe_tools({ "workflow": "jira_helper" }) first to see available tools.
+    Then call this workflow with {"tool": "tool_name", "args": {...}}.
+  externalServers:
+    - atlassian
+
+confluence_helper:
+  description: "Access Confluence MCP tools for documentation"
+  prompt: |
+    Use Confluence MCP tools to search pages, create pages, update content, etc.
+    Call describe_tools({ "workflow": "confluence_helper" }) first to see available tools.
+    Then call this workflow with {"tool": "tool_name", "args": {...}}.
+  externalServers:
+    - atlassian
+
+# Scripted workflows
+list_my_issues:
+  description: "List Jira issues assigned to me"
+  runtime: scripted
+  parameters:
+    project:
+      type: string
+      description: "Project key (e.g., PROJ, DEV)"
+      required: false
+    status:
+      type: string
+      description: "Filter by status (e.g., 'In Progress', 'To Do')"
+      required: false
+    max_results:
+      type: number
+      description: "Maximum number of results to return"
+      default: 20
+  steps:
+    - call: atlassian:jira_search
+      save_as: search_result
+      args:
+        jql: |
+          assignee = currentUser() 
+          {{#if project}}AND project = {{project}} {{/if}}
+          {{#if status}}AND status = "{{status}}" {{/if}}
+          ORDER BY updated DESC
+        limit: "{{ max_results }}"
+
+search_issues_compact:
+  description: "Search Jira issues with JQL"
+  runtime: scripted
+  parameters:
+    jql:
+      type: string
+      description: "JQL query string"
+      required: true
+    max_results:
+      type: number
+      description: "Maximum number of results"
+      default: 50
+  steps:
+    - call: atlassian:jira_search
+      args:
+        jql: "{{ jql }}"
+        limit: "{{ max_results }}"
+
+get_issue_summary:
+  description: "Get details of a Jira issue"
+  runtime: scripted
+  parameters:
+    issue_key:
+      type: string
+      description: "Jira issue key (e.g., PROJ-123)"
+      required: true
+  steps:
+    - call: atlassian:jira_get_issue
+      args:
+        issue_key: "{{ issue_key }}"
+
+search_confluence_pages:
+  description: "Search Confluence pages"
+  runtime: scripted
+  parameters:
+    query:
+      type: string
+      description: "Search query (CQL or text)"
+      required: true
+    space_key:
+      type: string
+      description: "Filter by space key (optional)"
+      required: false
+    limit:
+      type: number
+      description: "Maximum results"
+      default: 20
+  steps:
+    - call: atlassian:confluence_search
+      args:
+        cql: |
+          {{#if space_key}}
+          space = {{space_key}} AND text ~ "{{query}}"
+          {{else}}
+          text ~ "{{query}}"
+          {{/if}}
+        limit: "{{ limit }}"
+
+get_confluence_page_content:
+  description: "Get Confluence page content"
+  runtime: scripted
+  parameters:
+    page_id:
+      type: string
+      description: "Confluence page ID"
+      required: true
+  steps:
+    - call: atlassian:confluence_get_page
+      args:
+        page_id: "{{ page_id }}"
+

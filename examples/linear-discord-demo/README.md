@@ -53,6 +53,10 @@ Linear’s hosted MCP server uses OAuth 2.1. mcporter handles the browser/device
 Only Discord requires an environment variable for this demo. Linear auth is handled via the OAuth prompts/token cache.
 
 ```bash
+cp .env.example .env   # optional helper; stores placeholders only
+```
+
+```bash
 export DISCORD_BOT_TOKEN="your-bot-token-here"
 # Optional if you want the bootstrap script to inline credentials
 export LINEAR_CLIENT_ID="client-id"
@@ -64,7 +68,7 @@ export LINEAR_CLIENT_SECRET="client-secret"
 After running `pnpm bootstrap:linear`, `.mcp-workflows/servers.json` contains:
 
 - **Linear**: `npx mcp-remote https://mcp.linear.app/mcp` (`auth: "oauth"`, token cache at `.tokens/linear`).
-- **Discord**: `@saseq/discord-mcp` stdio server.
+- **Discord**: `npx @chinchillaenterprises/mcp-discord` stdio server.
 
 You can inspect the Linear catalog at any time with:
 
@@ -137,6 +141,7 @@ Get a Linear issue and send a Discord notification to the assignee.
 
 1. **Set environment variables:**
    ```bash
+   cp .env.example .env  # optional helper for local shells
    export DISCORD_BOT_TOKEN="your-bot-token"
    # Optional, only needed if you want the bootstrap script to auto-fill credentials
    export LINEAR_CLIENT_ID="client-id"
@@ -233,5 +238,5 @@ To send messages to a Discord channel (like #general):
 - **"Missing MCP server registry"**: Ensure `servers.json` exists in `.mcp-workflows/`
 - **"Environment placeholder cannot be resolved"**: Export `DISCORD_BOT_TOKEN` (and optionally `LINEAR_CLIENT_ID` / `LINEAR_CLIENT_SECRET` if you want the script to inline them)
 - **Linear OAuth errors**: Delete `.mcp-workflows/.tokens/linear` and re-run `pnpm bootstrap:linear` to retry the login flow
-- **Discord errors**: Ensure the bot token is valid and the bot has necessary permissions
+- **Discord errors**: Ensure the bot token is valid and the bot has necessary permissions. The demo uses `@chinchillaenterprises/mcp-discord`, which reads `DISCORD_TOKEN` from the environment (wired here from `DISCORD_BOT_TOKEN`).
 - **Tool not found**: Use `describe_tools` to verify the exact tool names exposed by each server
