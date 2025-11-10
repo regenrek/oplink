@@ -1,7 +1,7 @@
 {
   "name": "@oplink/core",
   "version": "0.0.5",
-  "description": "MCP workflow orchestration and registry tool with presets for thinking, coding and more",
+  "description": "MCP workflow orchestration and registry tool (provider-agnostic)",
   "type": "module",
   "keywords": [
     "mcp",
@@ -36,13 +36,13 @@
   "scripts": {
     "dev": "tsx src/server.ts",
     "dev:verbose": "NODE_ENV=development tsx src/server.ts",
-    "inspect": "tsc && mkdir -p dist/presets && cp src/presets/*.yaml dist/presets/ && npx @modelcontextprotocol/inspector node -- dist/cli-entry.mjs",
+    "inspect": "tsc && npx @modelcontextprotocol/inspector node -- dist/cli-entry.mjs",
     "build": "unbuild",
     "prepublishOnly": "pnpm run build",
     "update": "npm version patch && npm publish",
     "test": "vitest",
     "test:ci": "vitest run --reporter=dot",
-    "cli:dist": "node dist/cli-entry.mjs --preset thinking"
+    "cli:dist": "node dist/cli-entry.mjs --config ./.mcp-workflows"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",

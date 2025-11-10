@@ -18,7 +18,7 @@ The key to effective MCP use is to know when/how to use the right tools. Workflo
 
 ✅ Easily onboard your team to the best prompts + ways to use many MCP tools w/ version control.
 
-_We also provide a number of useful presets to get you started 🫡_
+_Bring your own workflows as simple YAML; share and version them with your team._
 
 ### So why use this?
 
@@ -45,30 +45,9 @@ And since these workflows are all defined in YAML and can be referenced from any
 - Since MCP servers can have custom configs for each project, you can easily pick and choose which configs to use for each project - setting up custom workflow folders for each project
 - Support for typed parameter inputs in tool configurations makes building custom MCP prompting tools a breeze
 
-### 🚀 Ready-to-Use Presets
+### 🚀 Example Workflows
 
-Workflows MCP includes multiple preset workflow modes out of the box for thinking, coding, and github use:
-
-**Thinking**: General purpose tools to improve reasoning on any task
-
-- **Thinking Mode**: Reflect on thoughts and produce structured analysis (inspired by Anthropic's latest research into thinking tools)
-- **Deep Thinking Mode**: Comprehensive multi-perspective analysis with detailed reflections
-
-**Coding**: Universally applicable tools for common coding tasks
-Universally applicable tools for common coding tasks
-
-- **Debugger Mode**: Systematic multi-step reasoning and debugging with hypothesis creation, telemetry gathering and testing
-- **Architecture Mode**: System design prompt with tradeoff analysis and implementation planning
-- **Planner Mode**: Systematic code change planning with codebase analysis
-- **PRD Mode**: Structured product requirements documentation for features, user stories and spike analysis
-- **Save Note**: Document ongoing work with comprehensive progress tracking. Useful for when you need to step away for a bit and want to save your thoughts for later.
-
-**GitHub**: Tools to simplify common GitHub tasks. Great for anyone who is a beginner with source control using Git and the Github CLI
-
-- **PR Review Mode**: Comprehensive pull request analysis with security considerations
-- **PR Creation Mode**: Structured PR creation process using GitHub CLI
-- **Create Branch**: Smart branch creation with contextual naming
-- **Save Changes**: Systematic git commit and push workflow
+Use the examples in this repo (or your own) to seed your `.mcp-workflows/` directory. You can define prompt‑only tools or scripted multi‑step workflows that call external MCP servers.
 
 ## Installation
 
@@ -97,12 +76,6 @@ To provide custom configurations, you can use the `--config` flag to point to a 
 npx @agentdesk/workflows-mcp@latest --config /path/to/.workflows
 ```
 
-If you want to enable presets, you can use the `--preset` flag to specify which presets to load:
-
-```bash
-npx @agentdesk/workflows-mcp@latest --preset thinking,coding,github
-```
-
 Here's what this would look like in a Cursor config all combined:
 
 ```json
@@ -112,7 +85,7 @@ Here's what this would look like in a Cursor config all combined:
       "command": "npx",
       "args": [
         "-y",
-        "@agentdesk/workflows-mcp@latest --config /path/to/.workflows --preset thinking,coding"
+        "@agentdesk/workflows-mcp@latest --config /path/to/.workflows"
       ]
     }
   }
@@ -124,12 +97,12 @@ Note:
 - _If you update your config, you must refresh the MCP tool_
 - _If refreshing doesn't work, make sure your config is valid YAML_
 - _If you're still having issues, then try removing & renaming the MCP tool in your client_
-- _If no config or preset is provided, it will default to using the `thinking` preset._
+- _If no config is provided, the server will start without user workflows._
 - _If you're still not able to get this working, open an issue ticket_
 
 ## Custom Workflow Configs
 
-Create a `.workflows` or `.mcp-workflows` directory in your project and add YAML configuration files with any name (must end with `.yaml` or `.yml`). These configurations will also override the preset defaults if named the same as a preset tool.
+Create a `.workflows` or `.mcp-workflows` directory in your project and add YAML configuration files with any name (must end with `.yaml` or `.yml`).
 
 ### Example Configuration Files
 
@@ -262,10 +235,7 @@ deep_thinking_mode:
 
 ### Configuration Structure
 
-Each YAML file should contain a mapping of tool names to their configuration. Configurations can be loaded from two sources:
-
-1. Internal presets (located in the `presets` directory)
-2. User-defined configurations (in `.workflows` or `.mcp-workflows` directory)
+Each YAML file should contain a mapping of tool names to their configuration. Configurations are loaded from user-defined files in `.workflows` or `.mcp-workflows`.
 
 ### Basic Tool Configuration
 
@@ -273,8 +243,8 @@ For each tool, you can specify:
 
 - `name`: Optional name override for the registered tool (default is the config key)
 - `description`: Description of what the workflow/tool does
-- `prompt`: Custom prompt (completely replaces default prompt if workflow name is also an active preset)
-- `context`: Additional context to append to the prompt (does not replace default prompt for presets)
+- `prompt`: Custom prompt
+- `context`: Additional context to append to the prompt
 - `tools`: Array or object of tools available in this mode, with flexible definition styles
 - `toolMode`: Mode of tool execution, either "sequential" or "situational" (defaults to "situational")
 - `parameters`: Object mapping of parameters as input to the tool - supports template injection using {{ parameter_name }}
@@ -352,11 +322,7 @@ filters:
 
 ### Configuration Loading
 
-The system loads configurations in the following order:
-
-1. Internal presets from the `presets` directory
-2. User-defined configurations from `.workflows` or `.mcp-workflows` directory
-3. Merges configurations, with user-defined settings taking precedence
+The system loads configurations from your `.workflows` or `.mcp-workflows` directory.
 
 When merging configurations:
 
@@ -370,9 +336,8 @@ Workflows MCP operates through a sophisticated configuration and tool registrati
 
 1. **Configuration Loading and Merging**
 
-   - Loads preset configurations from internal YAML files in the `presets` directory
-   - Optionally loads user-defined configurations from `.workflows` or `.mcp-workflows` directories
-   - Merges configurations with user configs taking precedence over presets
+   - Loads user-defined configurations from `.workflows` or `.mcp-workflows` directories
+   - Supports both sequential and situational tool execution modes
    - Supports both sequential and situational tool execution modes
 
 2. **Tool Registration and Validation**
@@ -381,7 +346,7 @@ Workflows MCP operates through a sophisticated configuration and tool registrati
    - Tools can be customized with:
      - Custom names and descriptions
      - Typed parameters with validation
-     - Custom prompts or extensions of preset prompts
+     - Custom prompts
      - Sequential or situational execution strategies
    - Validates tool configurations and parameters at registration time
 
@@ -394,9 +359,7 @@ Workflows MCP operates through a sophisticated configuration and tool registrati
 
 4. **Prompt Management**
 
-   - Manages prompts through a flexible system that supports:
-     - Default prompts from presets
-     - Custom user-defined prompts
+   - Manages prompts through a flexible system that supports custom user-defined prompts
      - Additional context injection
      - Dynamic tool availability based on mode
    - Supports both static and dynamic prompt generation based on configuration

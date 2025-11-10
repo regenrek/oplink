@@ -1,6 +1,7 @@
 import { describe, it, beforeEach, afterEach, expect } from "vitest";
 import { McpTestClient } from "../src/McpTestClient.js";
 import path from 'node:path';
+import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 // Resolve the CLI entry point path dynamically
@@ -29,37 +30,24 @@ describe("MCP Client Tests", () => {
 	}
 	});
 
-	it("should connect to server with default configuration", async () => {
-	await client.connectServer();
-	const tools = await client.listTools();
+it("starts with no workflows by default", async () => {
+    await client.connectServer();
+    const tools = await client.listTools();
+    expect(Array.isArray(tools.tools)).toBe(true);
+    const toolNames = tools.tools.map((t: any) => t.name);
+    console.log("Available tools:", toolNames);
+    expect(toolNames).toContain("describe_tools");
+});
 
-	// When no args provided, default preset is "thinking", so it should include generate_thought
-	expect(Array.isArray(tools.tools)).toBe(true);
-	const toolNames = tools.tools.map((t: any) => t.name);
-	console.log("Available tools:", toolNames);
-	expect(toolNames).toContain("generate_thought");
-	});
-
-	it("should connect with specific preset", async () => {
-	await client.connectServer(["--preset", "coding"]);
-	const tools = await client.listTools();
-
-	// Coding preset should include debugger_mode, planner_mode, etc.
-	expect(Array.isArray(tools.tools)).toBe(true);
-	const toolNames = tools.tools.map((t: any) => t.name);
-	expect(toolNames).toContain("debugger_mode");
-	expect(toolNames).toContain("planner_mode");
-	expect(toolNames).toContain("architecture_mode");
-	});
-
-	it("should work with multiple presets", async () => {
-	await client.connectServer(["--preset", "thinking,coding"]);
-	const tools = await client.listTools();
-
-	// Should have tools from both presets
-	expect(Array.isArray(tools.tools)).toBe(true);
-	const toolNames = tools.tools.map((t: any) => t.name);
-	expect(toolNames).toContain("generate_thought"); // from thinking
-	expect(toolNames).toContain("debugger_mode"); // from coding
-	});
+it("loads workflows from --config directory", async () => {
+    // create a temporary workflows dir with a simple tool
+    const tmpDir = path.resolve(__dirname, "./tmp-config/.mcp-workflows");
+    if (!fs.existsSync(tmpDir)) fs.mkdirSync(tmpDir, { recursive: true });
+    const wfPath = path.join(tmpDir, "workflows.yaml");
+    fs.writeFileSync(wfPath, `hello:\n  description: Simple hello tool\n  prompt: |\n    Hello from Oplink!\n`);
+    await client.connectServer(["--config", tmpDir]);
+    const tools = await client.listTools();
+    const toolNames = tools.tools.map((t: any) => t.name);
+    expect(toolNames).toContain("hello");
+});
 });

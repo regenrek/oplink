@@ -17,7 +17,7 @@ describe("Zod Schema Conversion", () => {
 
       const schema = convertParameterToZodSchema(param);
       expect(schema).toBeInstanceOf(z.ZodString);
-      expect(schema._def.typeName).toEqual("ZodString");
+      // Avoid relying on private _def internals across Zod versions
 
       // Test validation
       expect(schema.parse("test")).toEqual("test");
@@ -33,7 +33,7 @@ describe("Zod Schema Conversion", () => {
 
       const schema = convertParameterToZodSchema(param);
       expect(schema).toBeInstanceOf(z.ZodNumber);
-      expect(schema._def.typeName).toEqual("ZodNumber");
+      
 
       // Test validation
       expect(schema.parse(123)).toEqual(123);
@@ -49,7 +49,7 @@ describe("Zod Schema Conversion", () => {
 
       const schema = convertParameterToZodSchema(param);
       expect(schema).toBeInstanceOf(z.ZodBoolean);
-      expect(schema._def.typeName).toEqual("ZodBoolean");
+      
 
       // Test validation
       expect(schema.parse(true)).toEqual(true);
@@ -70,7 +70,7 @@ describe("Zod Schema Conversion", () => {
 
       const schema = convertParameterToZodSchema(param);
       expect(schema).toBeInstanceOf(z.ZodArray);
-      expect(schema._def.typeName).toEqual("ZodArray");
+      
 
       // Test validation
       expect(schema.parse([1, 2, 3])).toEqual([1, 2, 3]);
@@ -96,7 +96,7 @@ describe("Zod Schema Conversion", () => {
 
       const schema = convertParameterToZodSchema(param);
       expect(schema).toBeInstanceOf(z.ZodObject);
-      expect(schema._def.typeName).toEqual("ZodObject");
+      
 
       // Test validation
       expect(schema.parse({ name: "John", age: 30 })).toEqual({
@@ -116,7 +116,7 @@ describe("Zod Schema Conversion", () => {
 
       const schema = convertParameterToZodSchema(param);
       expect(schema).toBeInstanceOf(z.ZodEnum);
-      expect(schema._def.typeName).toEqual("ZodEnum");
+      
 
       // Test validation
       expect(schema.parse("option1")).toEqual("option1");
@@ -133,7 +133,7 @@ describe("Zod Schema Conversion", () => {
       const schema = convertParameterToZodSchema(param);
       // Numeric enums are often represented as unions of literals in Zod
       expect(schema).toBeInstanceOf(z.ZodUnion);
-      expect(schema._def.typeName).toEqual("ZodUnion");
+      
 
 
       // We're using a union of literals for numeric enums
@@ -161,9 +161,9 @@ describe("Zod Schema Conversion", () => {
       const schema = convertParametersToZodSchema(params);
       expect(schema).toBeTypeOf("object"); // Check if it's an object first
       expect(schema.requiredParam).toBeInstanceOf(z.ZodString);
-      expect(schema.requiredParam?._def.typeName).toEqual("ZodString");
+      
       expect(schema.optionalParam).toBeInstanceOf(z.ZodOptional);
-      expect(schema.optionalParam?._def.typeName).toEqual("ZodOptional");
+      
 
 
       // Test validation
@@ -218,7 +218,7 @@ describe("Zod Schema Conversion", () => {
       const schema = convertParametersToZodSchema(params);
       expect(schema).toBeTypeOf("object");
       expect(schema.settings).toBeInstanceOf(z.ZodObject);
-      expect(schema.settings?._def.typeName).toEqual("ZodObject");
+      
 
       // Test validation with nested object
       const zodObject = z.object(schema);

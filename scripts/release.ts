@@ -173,7 +173,7 @@ async function publishPackages(
 /**
  * Preflight checks to prevent broken publishes.
  * - Rejects workspace:/catalog: specifiers in runtime deps
- * - Ensures required built files exist (schemas/presets/bin)
+ * - Ensures required built files exist (schemas/bin)
  * - Runs npm pack --dry-run for each publishable package
  */
 function runPreflightChecks() {
@@ -201,7 +201,7 @@ function runPreflightChecks() {
                 path.join(pkgPath, "bin", "oplink.mjs"),
                 path.join(pkgPath, "dist", "schema", "oplink-workflows.schema.json"),
                 path.join(pkgPath, "dist", "schema", "oplink-servers.schema.json"),
-                path.join(pkgPath, "dist", "presets", "thinking.yaml"),
+                // presets removed
             ];
             for (const f of required) {
                 if (!fs.existsSync(f)) {
@@ -212,7 +212,7 @@ function runPreflightChecks() {
 
         if (target.name === "@oplink/core") {
             const required = [
-                path.join(pkgPath, "dist", "presets", "thinking.yaml"),
+                // presets removed
             ];
             for (const f of required) {
                 if (!fs.existsSync(f)) {

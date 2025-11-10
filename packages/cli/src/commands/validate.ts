@@ -1,4 +1,5 @@
 import { readFile } from "node:fs/promises";
+import * as fs from "node:fs";
 import path from "node:path";
 import { defineCommand } from "citty";
 import { colors } from "consola/utils";
@@ -28,7 +29,6 @@ export default defineCommand({
   },
   async run({ args }) {
     const base = path.resolve(String(args.config || path.join(String(args.cwd || "."), ".mcp-workflows")));
-    const workflowsPath = path.join(base, "workflows.yaml");
     const serversPath = path.join(base, "servers.json");
 
     const schemaDir = path.resolve(path.dirname(new URL(import.meta.url).pathname), "..", "schema");
@@ -45,22 +45,38 @@ export default defineCommand({
 
     let ok = true;
 
-    try {
-      const wfRaw = await readFile(workflowsPath, "utf8");
-      const wfDoc = load(wfRaw) as unknown;
-      const valid = validateWorkflows(wfDoc);
-      if (!valid) {
-        ok = false;
-        logger.error(colors.red(`workflows.yaml is invalid:`));
-        for (const err of validateWorkflows.errors || []) {
-          logger.log(` - ${err.instancePath || "/"} ${err.message}`);
-        }
-      } else {
-        logger.success(colors.green(`Validated ${path.relative(process.cwd(), workflowsPath)}`));
+    // Validate all YAML files recursively under base (supports registry imports)
+    const yamlFiles: string[] = [];
+    (function walk(dir: string) {
+      for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        const full = path.join(dir, entry.name);
+        if (entry.isDirectory()) walk(full);
+        else if (/\.(ya?ml)$/i.test(entry.name)) yamlFiles.push(full);
       }
-    } catch (e: any) {
-      ok = false;
-      logger.error(`Failed to read/validate workflows.yaml: ${e.message}`);
+    })(base);
+
+    if (yamlFiles.length === 0) {
+      logger.warn(`No YAML workflow files found in ${base}`);
+    }
+
+    for (const file of yamlFiles) {
+      try {
+        const wfRaw = await readFile(file, "utf8");
+        const wfDoc = load(wfRaw) as unknown;
+        const valid = validateWorkflows(wfDoc);
+        if (!valid) {
+          ok = false;
+          logger.error(colors.red(`${path.relative(process.cwd(), file)} is invalid:`));
+          for (const err of validateWorkflows.errors || []) {
+            logger.log(` - ${err.instancePath || "/"} ${err.message}`);
+          }
+        } else {
+          logger.success(colors.green(`Validated ${path.relative(process.cwd(), file)}`));
+        }
+      } catch (e: any) {
+        ok = false;
+        logger.error(`Failed to read/validate ${file}: ${e.message}`);
+      }
     }
 
     try {

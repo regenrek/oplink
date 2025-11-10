@@ -9,7 +9,6 @@ import {
 	mergeConfigs,
 	validateToolConfig,
 } from "./config";
-import { loadAvailablePresets, loadPresetConfigs } from "./preset";
 import { promptFunctions } from "./prompts";
 import {
 	appendFormattedTools,
@@ -467,18 +466,18 @@ function registerExternalServerWorkflow(
 	const describeCall = buildDescribeCallSnippet(toolName, normalizedAliases);
 	const describeHint = buildDescribeHint(toolName, normalizedAliases, describeCall);
 	const promptWithHint = ensureDescribeHint(promptText, describeHint);
-	const schemaShape: Record<string, z.ZodTypeAny> = {
-		tool: z
-			.string()
-			.describe(
-				`External tool to invoke (run ${describeCall} first, then set this field to the tool name)`,
-			)
-			.optional(),
-		args: z
-			.record(z.unknown())
-			.describe("Arguments object forwarded to the external tool")
-			.optional(),
-	};
+    const schemaShape: Record<string, z.ZodTypeAny> = {
+        tool: z
+            .string()
+            .describe(
+                `External tool to invoke (run ${describeCall} first, then set this field to the tool name)`,
+            )
+            .optional(),
+        args: z
+            .any()
+            .describe("Arguments object forwarded to the external tool")
+            .optional(),
+    };
 	if (normalizedAliases.length > 1) {
 		schemaShape.server = z
 			.enum(normalizedAliases as [string, string, ...string[]])
@@ -942,22 +941,16 @@ function descriptionFromConfig(
 /**
  * Starts the MCP server with the specified transport
  * @param server - The configured MCP server
- * @param presets - Array of preset names used
  * @param configPath - Optional path to user config
  */
 export async function startServer(
 	server: McpServer,
-	presets: string[],
 	configPath?: string,
 ): Promise<void> {
 const transport = new StdioServerTransport();
 	try {
 		await server.connect(transport);
-		console.error(
-			`DevTools MCP server running with presets: ${presets.join(", ")}${
-				configPath ? ` and user config from: ${configPath}` : ""
-			}`,
-		);
+		console.error(`DevTools MCP server running${configPath ? ` with user config from: ${configPath}` : " without user workflows"}.`);
 	} catch (err) {
 		console.error("Error starting server:", err);
 	}
@@ -1186,39 +1179,17 @@ function registerDescribeToolsUtility(
 	registeredNames.add(toolName);
 }
 
-export function loadAndMergeConfig(
-	presets: string[],
-	configPath?: string,
-	presetsDir?: string,
-): Record<string, any> {
-	// Log available presets
-	const availablePresets = loadAvailablePresets(presetsDir);
-	console.error(`Available presets: ${availablePresets.join(", ")}`);
-	console.error(`Using presets: ${presets.join(", ")}`);
-
-	// 1. Load preset configs from the specified directory (or fallback)
-	const presetConfig = loadPresetConfigs(presets, presetsDir);
-	console.error(
-		`Loaded ${Object.keys(presetConfig).length} tools from presets`,
-	);
-
-	// 2. Load user configs from .workflows directory if provided
-	const userConfig = configPath ? loadConfigSync(configPath) : {};
-	if (configPath) {
-		console.error(
-			`Loaded ${
-				Object.keys(userConfig).length
-			} tool configurations from user config directory: ${configPath}`,
-		);
-	}
-
-	// 3. Merge configs (user config overrides preset config)
-	const finalConfig = mergeConfigs(presetConfig, userConfig);
-	console.error(
-		`Final configuration contains ${Object.keys(finalConfig).length} tools`,
-	);
-
-	return finalConfig;
+export function loadAndMergeConfig(configPath?: string): Record<string, any> {
+    // Load user configs from .workflows directory if provided
+    const userConfig = configPath ? loadConfigSync(configPath) : {};
+    if (configPath) {
+        console.error(
+            `Loaded ${Object.keys(userConfig).length} tool configurations from user config directory: ${configPath}`,
+        );
+    } else {
+        console.error("No --config specified; starting without user workflows.");
+    }
+    return userConfig;
 }
 function detectAuthError(error: unknown): string | undefined {
 	const message = error instanceof Error ? error.message : String(error ?? "" );

@@ -34,9 +34,6 @@ function findProjectRoot(): string {
     }
     const parentDir = resolve(currentDir, "..");
     if (parentDir === currentDir) {
-      // Fallback for bundled usage (e.g., CLI inlines core code):
-      // Use the parent of the current directory so that `dist/presets` resolves
-      // to `<bundleRoot>/dist/presets`.
       return resolve(dirname(fileURLToPath(import.meta.url)), "..");
     }
     currentDir = parentDir;
@@ -47,11 +44,7 @@ function findProjectRoot(): string {
 const PROJECT_ROOT = findProjectRoot();
 
 // Define paths relative to the project root
-const SOURCE_PRESETS_DIR = join(PROJECT_ROOT, "src", "presets");
-const BUILT_PRESETS_DIR = join(PROJECT_ROOT, "dist", "presets");
-
-// Export the constants
-export { PROJECT_ROOT, SOURCE_PRESETS_DIR, BUILT_PRESETS_DIR };
+export { PROJECT_ROOT };
 
 /**
  * Gets the package version from package.json located at the project root.

@@ -1,19 +1,47 @@
 import { expect, describe, it, beforeEach, afterEach } from "vitest";
-import { createTestClient } from "./utils.js";
+import { createTestClient, ensureDirAndWriteYamlFile, getModulePaths } from "./utils.js";
+import * as path from "path";
+import * as fs from "fs";
 
 describe("Advanced Parameters Integration", () => {
   let client: any;
+  const { __dirname } = getModulePaths(import.meta.url);
+  const WF_DIR = path.join(__dirname, ".mcp-workflows-advanced", ".mcp-workflows");
 
   beforeEach(async () => {
+    if (!fs.existsSync(WF_DIR)) fs.mkdirSync(WF_DIR, { recursive: true });
+    ensureDirAndWriteYamlFile(path.join(WF_DIR, "workflows.yaml"), {
+      advanced_configuration: {
+        description: "Configure a system with complex parameters",
+        parameters: {
+          name: { type: "string", required: true },
+          settings: {
+            type: "object",
+            properties: {
+              performance: { type: "object", properties: { level: { type: "number" }, optimizeFor: { type: "string" } } },
+              security: { type: "object", properties: { enabled: { type: "boolean" }, levels: { type: "array", items: { type: "string" } } } },
+            },
+          },
+          tags: { type: "array", items: { type: "string" } },
+          timeout: { type: "number" },
+        },
+        prompt: "Configure {{name}}",
+      },
+      process_data: {
+        description: "Process data",
+        parameters: {
+          data: { type: "array", items: { type: "number" }, required: true },
+          operations: { type: "array", items: { type: "string" } },
+          outputFormat: { type: "enum", enum: ["json","text"] },
+        },
+        prompt: "Process data with operations",
+      },
+    });
     client = createTestClient();
-    await client.connectServer(["--preset", "examples"]);
+    await client.connectServer(["--config", WF_DIR]);
   });
 
-  afterEach(async () => {
-    if (client) {
-      await client.close();
-    }
-  });
+  afterEach(async () => { if (client) await client.close(); });
 
   it("should list tools including advanced_configuration tool", async () => {
     const response = await client.listTools();

@@ -1,0 +1,50 @@
+advanced_configuration:
+  description: Configure a system with complex parameters
+  parameters:
+    name:
+      type: string
+      required: true
+    settings:
+      type: object
+      properties:
+        performance:
+          type: object
+          properties:
+            level:
+              type: number
+            optimizeFor:
+              type: string
+        security:
+          type: object
+          properties:
+            enabled:
+              type: boolean
+            levels:
+              type: array
+              items:
+                type: string
+    tags:
+      type: array
+      items:
+        type: string
+    timeout:
+      type: number
+  prompt: Configure {{name}}
+process_data:
+  description: Process data
+  parameters:
+    data:
+      type: array
+      items:
+        type: number
+      required: true
+    operations:
+      type: array
+      items:
+        type: string
+    outputFormat:
+      type: enum
+      enum:
+        - json
+        - text
+  prompt: Process data with operations

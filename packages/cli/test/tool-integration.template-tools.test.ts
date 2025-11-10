@@ -1,13 +1,15 @@
 import { describe, it, beforeAll, afterAll, expect } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
-import { getModulePaths, createTestClient, writeTemplateYaml, removeTemplateYaml } from "./utils.js";
+import { getModulePaths, createTestClient, ensureDirAndWriteYamlFile } from "./utils.js";
 
 let client: any;
-const TEMPLATE_NAME = "template-tools";
+const { __dirname } = getModulePaths(import.meta.url);
+const WF_DIR = path.join(__dirname, ".mcp-workflows-template", ".mcp-workflows");
 
 beforeAll(async () => {
-  writeTemplateYaml(import.meta.url, TEMPLATE_NAME, () => ({
+  if (!fs.existsSync(WF_DIR)) fs.mkdirSync(WF_DIR, { recursive: true });
+  ensureDirAndWriteYamlFile(path.join(WF_DIR, "workflows.yaml"), {
     template_calculator: {
       name: "template_calculator",
       description: "Calculator with template parameters",
@@ -17,15 +19,12 @@ beforeAll(async () => {
       },
       prompt: "Calculate {{expression}} with {{precision}} decimal places precision.",
     },
-  }));
+  });
   client = createTestClient();
-  await client.connectServer(["--preset", TEMPLATE_NAME]);
+  await client.connectServer(["--config", WF_DIR]);
 }, 15000);
 
-afterAll(async () => {
-  if (client) await client.close();
-  //removeTemplateYaml(import.meta.url, TEMPLATE_NAME);
-}, 15000);
+afterAll(async () => { if (client) await client.close(); }, 15000);
 
 describe("Template Parameter Integration Tests", () => {
   it("should list tools with template parameters", async () => {

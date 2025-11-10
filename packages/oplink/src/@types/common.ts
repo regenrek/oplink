@@ -15,6 +15,5 @@ export type JsonSchema = Record<string, any>;
 export type ZodSchemaMap = Record<string, z.ZodTypeAny>;
 /** Interface for parsed command line arguments */
 export interface CommandLineArgs {
-	configPath?: string;
-	presets: string[];
+    configPath?: string;
 }

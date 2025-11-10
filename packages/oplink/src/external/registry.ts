@@ -1,6 +1,5 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { z } from "zod";
 import type { ServerDefinition } from "mcporter";
 import { loadEnvForConfigDir } from "./safeload-env";
 
@@ -12,35 +11,8 @@ export type ExternalServerRegistry = {
 
 const PLACEHOLDER_REGEX = /\$\{([A-Z0-9_]+)\}/gi;
 
-const BaseServerSchema = z.object({
-	description: z.string().optional(),
-	package: z.string().optional(),
-	env: z.record(z.string()).optional(),
-	headers: z.record(z.string()).optional(),
-	tokenCacheDir: z.string().optional(),
-	clientName: z.string().optional(),
-	oauthRedirectUrl: z.string().optional(),
-	auth: z.enum(["oauth"]).optional(),
-	timeoutMs: z.number().int().positive().optional(),
-});
-
-const StdioServerSchema = BaseServerSchema.extend({
-	type: z.literal("stdio"),
-	command: z.string().min(1, "stdio server requires command"),
-	args: z.array(z.string()).optional(),
-	cwd: z.string().optional(),
-});
-
-const HttpServerSchema = BaseServerSchema.extend({
-	type: z.literal("http"),
-	url: z.string().url("http server requires valid url"),
-});
-
-const ServerEntrySchema = z.union([StdioServerSchema, HttpServerSchema]);
-
-const RegistrySchema = z.object({
-	servers: z.record(ServerEntrySchema),
-});
+type RawServer = Record<string, any>;
+type RawRegistry = { servers?: Record<string, RawServer> };
 
 export class ExternalServerError extends Error {
 	constructor(message: string) {
@@ -79,14 +51,17 @@ export async function loadExternalServerRegistry(configDir: string): Promise<Ext
 		);
 	}
 
-	let parsed: z.infer<typeof RegistrySchema>;
-	try {
-		parsed = RegistrySchema.parse(JSON.parse(raw));
-	} catch (error) {
-		throw new ExternalServerError(
-			`servers.json at ${registryPath} is invalid: ${error instanceof Error ? error.message : error}`,
-		);
-	}
+    let parsed: RawRegistry;
+    try {
+        parsed = JSON.parse(raw) as RawRegistry;
+    } catch (error) {
+        throw new ExternalServerError(
+            `servers.json at ${registryPath} is invalid JSON: ${error instanceof Error ? error.message : error}`,
+        );
+    }
+    if (!parsed || typeof parsed !== "object" || !parsed.servers || typeof parsed.servers !== "object") {
+        throw new ExternalServerError(`servers.json at ${registryPath} is invalid: missing 'servers' object`);
+    }
 
 	const servers = new Map<string, ServerDefinition>();
 	for (const [alias, entry] of Object.entries(parsed.servers)) {
@@ -107,9 +82,21 @@ export async function loadExternalServerRegistry(configDir: string): Promise<Ext
 			);
 		}
 
-		const definition = buildServerDefinition(
+        if (!entry || typeof entry !== "object") {
+            throw new ExternalServerError(
+                `servers.json at ${registryPath} is invalid: server '${alias}' must be an object`,
+            );
+        }
+        const type = String((entry as any).type || "");
+        if (type !== "stdio" && type !== "http") {
+            throw new ExternalServerError(
+                `servers.json at ${registryPath} is invalid: server '${alias}' has unsupported type '${type}'`,
+            );
+        }
+
+        const definition = buildServerDefinition(
 			normalized,
-			entry,
+			entry as RawServer,
 			absoluteConfigDir,
 			registryPath,
 		);
@@ -131,7 +118,7 @@ export async function loadExternalServerRegistry(configDir: string): Promise<Ext
 
 function buildServerDefinition(
 	alias: string,
-	entry: z.infer<typeof ServerEntrySchema>,
+	entry: RawServer,
 	configDir: string,
 	registryPath: string,
 ): ServerDefinition {

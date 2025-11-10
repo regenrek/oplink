@@ -87,9 +87,7 @@ npx -y oplink@latest init
         "oplink@latest",
         "server",
         "--config",
-        "/path/to/.workflows",
-        "--preset",
-        "thinking,coding"
+        "/path/to/.workflows"
       ]
     }
   }
@@ -277,27 +275,9 @@ analysis_workflow:
       optional: true
 ```
 
-## Preset Workflows
+## Examples
 
-### Thinking
-
-- **Thinking Mode**: Structured reflection and analysis
-- **Deep Thinking Mode**: Multi-perspective comprehensive analysis
-
-### Coding
-
-- **Debugger Mode**: Systematic debugging with hypothesis testing
-- **Architecture Mode**: System design with tradeoff analysis
-- **Planner Mode**: Code change planning with codebase analysis
-- **PRD Mode**: Product requirements documentation
-- **Save Note**: Progress tracking and documentation
-
-### GitHub
-
-- **PR Review Mode**: Comprehensive pull request analysis
-- **PR Creation Mode**: Structured PR creation workflow
-- **Create Branch**: Contextual branch naming
-- **Save Changes**: Git commit and push workflow
+The repository includes example configurations under `examples/` showing both prompt-only and scripted workflows. Use these as references when creating your own YAML in `.mcp-workflows/`.
 
 ## External Tool Integration
 

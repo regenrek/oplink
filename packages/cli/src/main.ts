@@ -10,7 +10,7 @@ export const main = defineCommand({
 		version,
 		description,
 	},
-	// Keep cwd arguments, but remove config/preset from Citty so there's no conflict
+	// Keep cwd arguments; parse --config via mri in setup to avoid conflicts
 	args: {
 		...cwdArgs,
 		command: {
@@ -25,9 +25,8 @@ export const main = defineCommand({
 		// Initialize ctx.data if it doesn't exist
 		ctx.data = ctx.data || {};
 
-		const { configPath, presets } = parseArgs();
+		const { configPath } = parseArgs();
 		ctx.data.configPath = configPath;
-		ctx.data.presets = presets;
 	},
 });
 

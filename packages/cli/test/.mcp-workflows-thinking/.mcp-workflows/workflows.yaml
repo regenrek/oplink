@@ -1,0 +1,7 @@
+generate_thought:
+  description: Reflect on a thought and produce a reflection/new set of thoughts
+  parameters:
+    thought:
+      type: string
+      required: true
+  prompt: Reflect on {{ thought }}

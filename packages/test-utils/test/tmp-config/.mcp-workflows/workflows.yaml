@@ -1,0 +1,4 @@
+hello:
+  description: Simple hello tool
+  prompt: |
+    Hello from Oplink!

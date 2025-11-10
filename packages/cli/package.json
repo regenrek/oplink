@@ -1,7 +1,7 @@
 {
   "name": "oplink",
   "version": "0.0.5",
-  "description": "MCP workflow orchestration and registry tool with presets for thinking, coding and more",
+  "description": "MCP workflow orchestration and registry tool for user-defined workflows",
   "type": "module",
   "keywords": [
     "mcp",

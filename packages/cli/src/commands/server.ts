@@ -6,7 +6,19 @@ import { dirname, join } from "pathe";
 import { defineCommand } from "citty";
 import { consola } from "consola";
 
-import { createMcpServer, loadAndMergeConfig, startServer } from "@oplink/core";
+// Lazy-load core to work in monorepo tests without requiring a published package
+async function loadCore() {
+    try {
+        return await import("@oplink/core");
+    } catch {
+        const { fileURLToPath } = await import("node:url");
+        const { dirname, join } = await import("pathe");
+        const here = fileURLToPath(import.meta.url);
+        // dist/chunks/server.mjs → ../../../oplink/dist/index.mjs
+        const fallback = join(dirname(here), "../../../oplink/dist/index.mjs");
+        return await import(fallback);
+    }
+}
 
 import { logger } from "../utils/logger";
 import { cwdArgs, logLevelArgs } from "./_shared";
@@ -32,23 +44,9 @@ export default defineCommand({
 	args: {
 		...cwdArgs,
 		...logLevelArgs,
-		force: {
-			type: "boolean",
-			description:
-				"Override existing preset file or directory in .mcp-workflows",
-		},
-		preset: {
-			type: "string",
-			description:
-				"Comma-separated list of presets to use (e.g., thinking,code). Defaults to 'thinking' if no preset or config is specified.",
-		},
 		config: {
 			type: "string",
 			description: "Path to a specific user configuration file or directory",
-		},
-		presetsDir: {
-			type: "string",
-			description: "Directory containing preset YAML files",
 		},
 	},
 	async run(ctx) {
@@ -65,21 +63,6 @@ export default defineCommand({
 		console.error("Starting MCP server...");
 
 		const configPath = ctx.args.config;
-		let presets: string[] = [];
-
-		if (ctx.args.preset) {
-			presets = ctx.args.preset
-				.split(",")
-				.map((p) => p.trim())
-				.filter(Boolean);
-		}
-
-		if (presets.length === 0 && !configPath) {
-			console.error(
-				"No preset or config specified, defaulting to 'thinking' preset.",
-			);
-			presets = ["thinking"];
-		}
 
 		try {
 			const version = await getPackageVersion();
@@ -87,19 +70,8 @@ export default defineCommand({
 				console.error("Could not determine package version.");
 			}
 
-			// Determine CLI's own dist/presets directory
-			const cliFile = fileURLToPath(import.meta.url);
-			const cliDir = dirname(cliFile);
-			const cliDistPresetsDir = join(cliDir, "../presets");
-
-			// Use explicit --presets-dir if provided, else default to CLI's dist/presets
-			const presetsDirArg = ctx.args.presetsDir as string | undefined;
-			const presetsDir = presetsDirArg || cliDistPresetsDir;
-
-			console.error(
-				`Loading configuration with presets: ${presets.join(", ")}${configPath ? ` and config: ${configPath}` : ""}`,
-			);
-			const finalConfig = loadAndMergeConfig(presets, configPath, presetsDir);
+			const core = await loadCore();
+			const finalConfig = core.loadAndMergeConfig(configPath);
 
 			// During server creation we may talk to external MCP servers via mcporter.
 			// Some libraries may still write to STDOUT; temporarily mirror STDOUT to STDERR
@@ -111,7 +83,7 @@ export default defineCommand({
 
 			let server: Awaited<ReturnType<typeof createMcpServer>> | null = null;
 			try {
-				server = await createMcpServer(finalConfig, version, {
+				server = await core.createMcpServer(finalConfig, version, {
 					configDir: configPath,
 				});
 			} finally {
@@ -121,7 +93,7 @@ export default defineCommand({
 			if (!server) {
 				throw new Error("MCP server failed to initialize");
 			}
-			await startServer(server, presets, configPath);
+			await core.startServer(server, configPath);
 		} catch (error) {
 			console.error("Failed to start MCP server:", error);
 			process.exit(1);

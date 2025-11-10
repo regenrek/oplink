@@ -32,8 +32,7 @@ This is a monorepo with multiple packages:
      - Rejects runtime specifiers `workspace:` and `catalog:` in `dependencies`, `peerDependencies`, and `optionalDependencies`
   3. Build once to generate artifacts
   4. Artifact checks:
-     - CLI: `bin/oplink.mjs`, `dist/schema/oplink-workflows.schema.json`, `dist/schema/oplink-servers.schema.json`, `dist/presets/thinking.yaml`
-     - Core: `dist/presets/thinking.yaml`
+     - CLI: `bin/oplink.mjs`, `dist/schema/oplink-workflows.schema.json`, `dist/schema/oplink-servers.schema.json`
   5. `npm pack --dry-run` must succeed for each publishable package
   
   If any preflight step fails, the script aborts before changing versions or creating tags.
@@ -55,7 +54,7 @@ This is a monorepo with multiple packages:
   - Verify git tag exists: `git tag -l v*`
 
 ## Deprecation Policy
-- If an early version has known issues (e.g., missing files or unusable presets), deprecate it to guide users to a working version:
+- If an early version has known issues (e.g., missing files or unusable/broken workflows), deprecate it to guide users to a working version:
   - `npm deprecate oplink@<bad> "Deprecated. Please use oplink@<good> or later."`
   - `npm deprecate @oplink/core@<bad> "Deprecated. Please use @oplink/core@<good> or later."`
 - Prefer deprecating over unpublishing. Only unpublish if absolutely necessary and within the npm time window.
@@ -64,7 +63,7 @@ This is a monorepo with multiple packages:
 - Error about `workspace:`/`catalog:` in deps:
   - Replace those specifiers with real semver ranges for publishable packages.
 - Missing artifact error:
-  - Ensure build outputs land in `dist/` (schemas/presets/bin). Update build configs if needed.
+  - Ensure build outputs land in `dist/` (schemas/bin). Update build configs if needed.
 - `npm pack --dry-run` fails:
   - Inspect the error, then re-run the release after fixing.
 

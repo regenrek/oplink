@@ -8,7 +8,6 @@ import type {
 	PromptConfig,
 	StepConfig,
 } from "./@types/config";
-import { loadAvailablePresets } from "./preset"; // or wherever your preset loader is
 
 // Default empty configuration
 const defaultConfig: DevToolsConfig = {};
@@ -109,7 +108,7 @@ function mergeTools(targetTools?: any, sourceTools?: any): any {
  * @returns {Promise<DevToolsConfig>} Promise resolving to the loaded and merged configuration
  */
 export async function loadConfig(
-	directoryPath?: string,
+    directoryPath?: string,
 ): Promise<DevToolsConfig> {
 	if (!directoryPath) {
 		console.error(
@@ -143,14 +142,18 @@ export async function loadConfig(
 			return defaultConfig;
 		}
 
-		// Read all YAML files in the directory
-		const files = fs
-			.readdirSync(absolutePath)
-			.filter(
-				(file) =>
-					file.toLowerCase().endsWith(".yaml") ||
-					file.toLowerCase().endsWith(".yml"),
-			);
+        // Recursively gather all YAML files under the directory
+        const files: string[] = [];
+        (function walk(dir: string) {
+            for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+                const full = path.join(dir, entry.name);
+                if (entry.isDirectory()) {
+                    walk(full);
+                } else if (/\.(ya?ml)$/i.test(entry.name)) {
+                    files.push(full);
+                }
+            }
+        })(absolutePath);
 
 		if (files.length === 0) {
 			console.error(
@@ -162,13 +165,12 @@ export async function loadConfig(
 		// Merge all configurations
 		const mergedConfig: DevToolsConfig = {};
 
-		for (const file of files) {
-			const filePath = path.join(absolutePath, file);
-			console.error(`Loading config from: ${filePath}`);
+        for (const filePath of files) {
+            console.error(`Loading config from: ${filePath}`);
 
 			try {
 				const content = fs.readFileSync(filePath, "utf-8");
-				const fileConfig = yaml.load(content) as DevToolsConfig;
+                const fileConfig = yaml.load(content) as DevToolsConfig;
 
 				if (typeof fileConfig !== "object") {
 					console.error(`Config in ${filePath} must be an object, skipping`);
@@ -232,14 +234,18 @@ export function loadConfigSync(directoryPath?: string): DevToolsConfig {
 			return defaultConfig;
 		}
 
-		// Read all YAML files in the directory
-		const files = fs
-			.readdirSync(absolutePath)
-			.filter(
-				(file) =>
-					file.toLowerCase().endsWith(".yaml") ||
-					file.toLowerCase().endsWith(".yml"),
-			);
+        // Recursively gather all YAML files under the directory
+        const files: string[] = [];
+        (function walk(dir: string) {
+            for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+                const full = path.join(dir, entry.name);
+                if (entry.isDirectory()) {
+                    walk(full);
+                } else if (/\.(ya?ml)$/i.test(entry.name)) {
+                    files.push(full);
+                }
+            }
+        })(absolutePath);
 
 		if (files.length === 0) {
 			console.error(
@@ -251,9 +257,8 @@ export function loadConfigSync(directoryPath?: string): DevToolsConfig {
 		// Merge all configurations
 		const mergedConfig: DevToolsConfig = {};
 
-		for (const file of files) {
-			const filePath = path.join(absolutePath, file);
-			console.error(`Loading config from: ${filePath}`);
+        for (const filePath of files) {
+            console.error(`Loading config from: ${filePath}`);
 
 			try {
 				const content = fs.readFileSync(filePath, "utf-8");

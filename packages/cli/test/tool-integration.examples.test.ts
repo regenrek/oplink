@@ -2,40 +2,33 @@ import { describe, it, beforeAll, afterAll, expect } from "vitest";
 import { McpTestClient } from "@oplink/test-utils";
 import * as fs from "fs";
 import * as path from "path";
-import { getModulePaths, writeYamlFile, createTestClient } from "./utils";
+import { getModulePaths, ensureDirAndWriteYamlFile, createTestClient } from "./utils";
 
 const { __dirname } = getModulePaths(import.meta.url);
-
-const EXAMPLES_YAML_PATH = path.join(__dirname, "..", "src", "presets", "examples.yaml");
+const WF_DIR = path.join(__dirname, ".mcp-workflows-examples", ".mcp-workflows");
 
 let client: McpTestClient;
 
 beforeAll(async () => {
-  if (!fs.existsSync(EXAMPLES_YAML_PATH)) {
-    const examplesDir = path.dirname(EXAMPLES_YAML_PATH);
-    if (!fs.existsSync(examplesDir)) fs.mkdirSync(examplesDir, { recursive: true });
-
-    const examplesYaml = {
-      test_calculator: {
-        name: "calculator",
-        description: "Perform mathematical calculations",
-        parameters: {
-          expression: { type: "string", description: "The mathematical expression to evaluate", required: true },
-          precision: { type: "number", description: "Number of decimal places in the result", default: 2 },
-        },
-        prompt: "Evaluate the expression with the given precision.",
+  if (!fs.existsSync(WF_DIR)) fs.mkdirSync(WF_DIR, { recursive: true });
+  const examplesYaml = {
+    test_calculator: {
+      name: "calculator",
+      description: "Perform mathematical calculations",
+      parameters: {
+        expression: { type: "string", description: "The mathematical expression to evaluate", required: true },
+        precision: { type: "number", description: "Number of decimal places in the result", default: 2 },
       },
-    };
-    writeYamlFile(EXAMPLES_YAML_PATH, examplesYaml);
-  }
+      prompt: "Evaluate the expression with the given precision.",
+    },
+  };
+  ensureDirAndWriteYamlFile(path.join(WF_DIR, "workflows.yaml"), examplesYaml);
 
   client = createTestClient();
-  await client.connectServer(["--preset", "examples"]);
+  await client.connectServer(["--config", WF_DIR]);
 }, 15000);
 
-afterAll(async () => {
-  if (client) await client.close();
-}, 15000);
+afterAll(async () => { if (client) await client.close(); }, 15000);
 
 describe("Parameterized Tool Integration Tests", () => {
   it("should list the parameterized tool", async () => {
@@ -68,4 +61,4 @@ describe("Parameterized Tool Integration Tests", () => {
       throw error;
     }
   }, 15000);
-}); 
+});

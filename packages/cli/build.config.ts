@@ -7,14 +7,9 @@ const isAnalysingSize = process.env.BUNDLE_SIZE === "true";
 export default defineBuildConfig({
 	declaration: !isAnalysingSize,
 	failOnWarn: true,
+	externals: [], // inline workspace deps like @oplink/core
 	entries: [
 		"src/index",
-		{
-			builder: "copy",
-			input: "src/presets",
-			outDir: "dist/presets",
-			pattern: "**/*.yaml",
-		},
 		// Bundle JSON Schemas used by `oplink validate`
 		{
 			builder: "copy",

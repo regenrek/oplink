@@ -12,10 +12,11 @@ Why workflows
 - Share a consistent toolbox across teammates/repos
 - Curate arguments, defaults, and sequences for reliability
 
-Choose your path
+Project setup
 
-- Path A — Quick start: run `oplink server --preset thinking` from your IDE. No files required.
-- Path B — Project setup: `npx oplink@latest init`, add `.mcp-workflows/workflows.yaml` (and `servers.json` if using external servers), then point your IDE at `--config ./.mcp-workflows`.
+- `npx oplink@latest init`
+- Add `.mcp-workflows/workflows.yaml` (and `servers.json` if using external servers)
+- Point your IDE at `--config ./.mcp-workflows` when starting the server
 
 Workflow modes
 

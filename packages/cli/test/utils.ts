@@ -48,33 +48,3 @@ export function writeYamlRelativeToModule(importMetaUrl: string, relativeFilePat
   const filePath = path.join(__dirname, relativeFilePath);
   ensureDirAndWriteYamlFile(filePath, data);
 }
-
-/**
- * Write the template YAML to both src and dist locations for a given template name
- */
-export function writeTemplateYaml(
-  importMetaUrl: string,
-  templateName: string,
-  dataOrFactory: any | (() => any)
-) {
-  const data = typeof dataOrFactory === "function" ? dataOrFactory() : dataOrFactory;
-
-  const srcRelPath = `../src/presets/${templateName}.yaml`;
-  const distRelPath = `../dist/presets/${templateName}.yaml`;
-
-  writeYamlRelativeToModule(importMetaUrl, srcRelPath, data);
-  writeYamlRelativeToModule(importMetaUrl, distRelPath, data);
-}
-
-/**
- * Remove the template YAML files from both src and dist locations for a given template name
- */
-export function removeTemplateYaml(importMetaUrl: string, templateName: string) {
-  const { __dirname } = getModulePaths(importMetaUrl);
-
-  const srcPath = path.join(__dirname, `../src/presets/${templateName}.yaml`);
-  const distPath = path.join(__dirname, `../dist/presets/${templateName}.yaml`);
-
-  if (fs.existsSync(srcPath)) fs.unlinkSync(srcPath);
-  if (fs.existsSync(distPath)) fs.unlinkSync(distPath);
-}

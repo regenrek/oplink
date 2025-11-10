@@ -1,0 +1,13 @@
+test_calculator:
+  name: calculator
+  description: Perform mathematical calculations
+  parameters:
+    expression:
+      type: string
+      description: The mathematical expression to evaluate
+      required: true
+    precision:
+      type: number
+      description: Number of decimal places in the result
+      default: 2
+  prompt: Evaluate the expression with the given precision.
