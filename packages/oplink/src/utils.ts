@@ -21,27 +21,26 @@ import type { ToolItem } from "./@types/prompts";
  * @throws {Error} If package.json cannot be found.
  */
 function findProjectRoot(): string {
-	let currentDir = dirname(fileURLToPath(import.meta.url));
-	while (true) {
-		const packageJsonPath = join(currentDir, "package.json");
-		if (fs.existsSync(packageJsonPath)) {
-			// Check if it's the monorepo root or the package root
-			// A simple check: does it have a 'packages' directory or is the name '@oplink/core'?
-			// You might need a more robust check depending on your monorepo structure
-			const pkg = JSON.parse(fs.readFileSync(packageJsonPath, "utf8"));
-			if (pkg.name === "@oplink/core") {
-				return currentDir;
-			}
-		}
-		const parentDir = resolve(currentDir, "..");
-		if (parentDir === currentDir) {
-			// Reached the filesystem root
-			throw new Error(
-				"Could not find project root containing package.json for '@oplink/core'.",
-			);
-		}
-		currentDir = parentDir;
-	}
+  let currentDir = dirname(fileURLToPath(import.meta.url));
+  while (true) {
+    const packageJsonPath = join(currentDir, "package.json");
+    if (fs.existsSync(packageJsonPath)) {
+      try {
+        const pkg = JSON.parse(fs.readFileSync(packageJsonPath, "utf8"));
+        if (pkg.name === "@oplink/core") {
+          return currentDir;
+        }
+      } catch {}
+    }
+    const parentDir = resolve(currentDir, "..");
+    if (parentDir === currentDir) {
+      // Fallback for bundled usage (e.g., CLI inlines core code):
+      // Use the parent of the current directory so that `dist/presets` resolves
+      // to `<bundleRoot>/dist/presets`.
+      return resolve(dirname(fileURLToPath(import.meta.url)), "..");
+    }
+    currentDir = parentDir;
+  }
 }
 
 // Store the project root path
