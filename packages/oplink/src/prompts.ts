@@ -5,9 +5,10 @@ import { fileURLToPath } from "node:url";
 import * as yaml from "js-yaml";
 import type { DevToolsConfig, PromptConfig } from "./@types/config.js";
 import {
-	appendFormattedTools,
-	formatToolsList,
-	processTemplate,
+  appendFormattedTools,
+  formatToolsList,
+  processTemplate,
+  BUILT_PRESETS_DIR,
 } from "./utils.js";
 
 // In ES modules, __dirname is not available directly
@@ -15,7 +16,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 // Directory where preset YAML files are stored
-const PRESETS_DIR = path.join(__dirname, "presets");
+const PRESETS_DIR = BUILT_PRESETS_DIR;
 
 /**
  * Applies configuration to a default prompt
