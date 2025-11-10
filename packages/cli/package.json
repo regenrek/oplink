@@ -24,7 +24,6 @@
     ".": "./dist/index.mjs",
     "./cli": "./bin/oplink.mjs"
   },
-  
   "bin": {
     "oplink": "bin/oplink.mjs"
   },
@@ -43,7 +42,7 @@
     "test:dist": "node ./bin/oplink.mjs info ./playground"
   },
   "devDependencies": {
-    "rolldown": "^0.13.0",
+    "@oplink/test-utils": "workspace:*",
     "@types/js-yaml": "catalog:types",
     "@types/node": "catalog:types",
     "@types/semver": "catalog:types",
@@ -55,15 +54,16 @@
     "magicast": "catalog:utils",
     "mri": "catalog:cli",
     "pathe": "catalog:prod",
+    "rolldown": "1.0.0-beta.47",
     "typescript": "catalog:cli",
-    "@oplink/test-utils": "workspace:*",
     "vitest": "catalog:testing"
   },
   "packageManager": "pnpm@10.6.3",
   "dependencies": {
+    "@oplink/core": "workspace:*",
+    "@iarna/toml": "^2.2.5",
     "ajv": "^8.17.1",
     "ajv-formats": "^3.0.1",
-    "js-yaml": "^4.1.0",
-    "@oplink/core": "workspace:*"
+    "js-yaml": "^4.1.0"
   }
 }

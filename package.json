@@ -78,7 +78,7 @@
 		"tsx": "catalog:cli",
 		"typescript": "catalog:cli",
 		"typescript-eslint": "^8.26.1",
-		"unbuild": "catalog:cli",
+    
 		"vite": "catalog:cli",
 		"vitest": "catalog:testing",
 		"vitest-package-exports": "catalog:testing",
@@ -87,7 +87,7 @@
 		"zod": "catalog:prod"
 	},
 	"packageManager": "pnpm@10.6.3",
-	"pnpm": {
+  	"pnpm": {
 		"onlyBuiltDependencies": ["better-sqlite3"],
 		"overrides": {
 			"oplink": "workspace:*"

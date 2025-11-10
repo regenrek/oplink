@@ -4,7 +4,7 @@
   "private": true,
   "description": "Shared test utilities for Oplink SDK and CLI",
   "type": "module",
-  "main": "./dist/index.cjs",
+  "main": "./dist/index.mjs",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
   "files": [
@@ -13,12 +13,11 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.cjs"
+      "import": "./dist/index.mjs"
     }
   },
   "scripts": {
-    "build": "unbuild",
+    "build": "rolldown -c && tsc -p tsconfig.json --emitDeclarationOnly --declaration --outDir dist",
     "prepublishOnly": "pnpm run build",
     "test": "pnpm run build && vitest",
     "test:1": "pnpm run build &&vitest run 'CL1'"
@@ -28,7 +27,7 @@
   },
   "devDependencies": {
     "@types/node": "catalog:types",
-    "typescript": "catalog:cli",
-    "unbuild": "catalog:cli"
+    "rolldown": "1.0.0-beta.47",
+    "typescript": "catalog:cli"
   }
-} 
+}

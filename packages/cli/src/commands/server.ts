@@ -46,16 +46,18 @@ export default defineCommand({
 			consola.options = { ...(consola as any).options, stdout: process.stderr, stderr: process.stderr };
 		} catch {}
 
-		// Prefer STDERR for any diagnostic output
-		console.error("Starting MCP server...");
+    // Prefer STDERR for any diagnostic output (verbose only)
+    if (process.env.OPLINK_LOG_LEVEL === 'verbose') {
+      console.error("Starting MCP server...");
+    }
 
 		const configPath = ctx.args.config;
 
 		try {
-			const version = await getPackageVersion();
-			if (version === "unknown") {
-				console.error("Could not determine package version.");
-			}
+        const version = await getPackageVersion();
+        if (version === "unknown" && process.env.OPLINK_LOG_LEVEL === 'verbose') {
+          console.error("Could not determine package version.");
+        }
 
 			if (ctx.args.logLevel) {
 				process.env.OPLINK_LOG_LEVEL = String(ctx.args.logLevel);

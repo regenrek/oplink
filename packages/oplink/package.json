@@ -20,7 +20,7 @@
   ],
   "bugs": "https://github.com/regenrek/oplink-mcp/issues",
   "license": "MIT",
-  "main": "./dist/index.cjs",
+  "main": "./dist/index.mjs",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
   "files": [
@@ -29,15 +29,14 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.cjs"
+      "import": "./dist/index.mjs"
     }
   },
   "scripts": {
     "dev": "tsx src/server.ts",
     "dev:verbose": "NODE_ENV=development tsx src/server.ts",
     "inspect": "tsc && npx @modelcontextprotocol/inspector node -- dist/cli-entry.mjs",
-    "build": "unbuild",
+    "build": "rolldown -c && tsc -p tsconfig.json --emitDeclarationOnly --declaration --outDir dist",
     "prepublishOnly": "pnpm run build",
     "update": "npm version patch && npm publish",
     "test": "vitest",
@@ -65,7 +64,7 @@
     "ts-node": "^10.9.2",
     "tsx": "catalog:cli",
     "typescript": "catalog:cli",
-    "unbuild": "catalog:cli",
+    "rolldown": "1.0.0-beta.47",
     "vitest": "catalog:testing"
   },
   "packageManager": "pnpm@10.6.3"
