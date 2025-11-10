@@ -139,32 +139,91 @@ function createGitCommitAndTag(version: string) {
 }
 
 async function publishPackages(
-	versionBump: "major" | "minor" | "patch" | string = "patch",
+    versionBump: "major" | "minor" | "patch" | string = "patch",
 ) {
-	ensureCleanWorkingTree();
+    ensureCleanWorkingTree();
 
-	const newVersion = bumpAllVersions(versionBump);
+    // Preflight: verify publishable packages won't break on npm
+    runPreflightChecks();
 
-	createGitCommitAndTag(newVersion);
+    const newVersion = bumpAllVersions(versionBump);
 
-	for (const target of packageTargets.filter((pkg) => pkg.publish)) {
-		const pkgPath = path.resolve(target.dir);
-		const manifestPath = path.join(pkgPath, "package.json");
-		if (!fs.existsSync(manifestPath)) {
-			console.warn(`Skipping publish for ${target.name}; missing ${manifestPath}`);
-			continue;
-		}
-		const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
-		if (manifest.private) {
-			console.warn(
-				`Skipping publish for ${target.name}; package.json is marked private`,
-			);
-			continue;
-		}
-		const accessFlag = target.access === "public" ? " --access public" : "";
-		console.log(`Publishing ${target.name}@${newVersion}...`);
-		run(`pnpm publish --no-git-checks${accessFlag}`, pkgPath);
-	}
+    createGitCommitAndTag(newVersion);
+
+    for (const target of packageTargets.filter((pkg) => pkg.publish)) {
+        const pkgPath = path.resolve(target.dir);
+        const manifestPath = path.join(pkgPath, "package.json");
+        if (!fs.existsSync(manifestPath)) {
+            console.warn(`Skipping publish for ${target.name}; missing ${manifestPath}`);
+            continue;
+        }
+        const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+        if (manifest.private) {
+            console.warn(
+                `Skipping publish for ${target.name}; package.json is marked private`,
+            );
+            continue;
+        }
+        const accessFlag = target.access === "public" ? " --access public" : "";
+        console.log(`Publishing ${target.name}@${newVersion}...`);
+        run(`pnpm publish --no-git-checks${accessFlag}`, pkgPath);
+    }
+}
+
+/**
+ * Preflight checks to prevent broken publishes.
+ * - Rejects workspace:/catalog: specifiers in runtime deps
+ * - Ensures required built files exist (schemas/presets/bin)
+ * - Runs npm pack --dry-run for each publishable package
+ */
+function runPreflightChecks() {
+    for (const target of packageTargets.filter((p) => p.publish)) {
+        const pkgPath = path.resolve(target.dir);
+        const manifestPath = path.join(pkgPath, "package.json");
+        if (!fs.existsSync(manifestPath)) continue;
+        const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+
+        // 1) Disallow bad specifiers in runtime deps
+        const badSpec = (deps?: Record<string, string>) =>
+            !!deps && Object.values(deps).some((v) => /^workspace:|^catalog:/.test(String(v)));
+        if (badSpec(manifest.dependencies) || badSpec(manifest.peerDependencies) || badSpec(manifest.optionalDependencies)) {
+            throw new Error(
+                `Preflight failed for ${target.name}: runtime deps contain 'workspace:' or 'catalog:' specifiers. Fix versions before releasing.`,
+            );
+        }
+
+        // 2) Build once to produce artifacts we will check
+        run("pnpm run build", pkgPath);
+
+        // 3) Artifact checks per package
+        if (target.name === "oplink") {
+            const required = [
+                path.join(pkgPath, "bin", "oplink.mjs"),
+                path.join(pkgPath, "dist", "schema", "oplink-workflows.schema.json"),
+                path.join(pkgPath, "dist", "schema", "oplink-servers.schema.json"),
+                path.join(pkgPath, "dist", "presets", "thinking.yaml"),
+            ];
+            for (const f of required) {
+                if (!fs.existsSync(f)) {
+                    throw new Error(`Preflight failed for oplink: missing built file ${f}`);
+                }
+            }
+        }
+
+        if (target.name === "@oplink/core") {
+            const required = [
+                path.join(pkgPath, "dist", "presets", "thinking.yaml"),
+            ];
+            for (const f of required) {
+                if (!fs.existsSync(f)) {
+                    throw new Error(`Preflight failed for @oplink/core: missing built file ${f}`);
+                }
+            }
+        }
+
+        // 4) npm pack --dry-run must succeed
+        run("npm pack --dry-run", pkgPath);
+    }
 }
 
 // Get version bump type from command line arguments
