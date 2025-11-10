@@ -1,6 +1,6 @@
 {
 	"name": "@oplink/core",
-	"version": "0.0.1",
+	"version": "0.0.2",
 	"description": "MCP workflow orchestration and registry tool with presets for thinking, coding and more",
 	"type": "module",
 	"keywords": [
@@ -41,11 +41,14 @@
 		"prepublishOnly": "pnpm run build",
 		"update": "npm version patch && npm publish",
 		"test": "vitest",
+		"test:ci": "vitest run --reporter=dot",
 		"cli:dist": "node dist/cli-entry.mjs --preset thinking"
 	},
 	"dependencies": {
 		"@anthropic-ai/sdk": "^0.39.0",
+		"@leeoniya/ufuzzy": "^1.0.19",
 		"@modelcontextprotocol/sdk": "catalog:prod",
+		"dotenv": "^16.4.7",
 		"js-yaml": "catalog:prod",
 		"mcporter": "^0.4.1",
 		"mri": "^1.2.0",

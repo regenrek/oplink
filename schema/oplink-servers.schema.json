@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://oplink.dev/schema/oplink-servers.schema.json",
+  "title": "Oplink External Servers Registry",
+  "type": "object",
+  "properties": {
+    "servers": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "type": { "const": "stdio" },
+              "description": { "type": "string" },
+              "package": { "type": "string" },
+              "env": { "type": "object", "additionalProperties": { "type": "string" } },
+              "headers": { "type": "object", "additionalProperties": { "type": "string" } },
+              "tokenCacheDir": { "type": "string" },
+              "clientName": { "type": "string" },
+              "oauthRedirectUrl": { "type": "string" },
+              "auth": { "type": "string", "enum": ["oauth"] },
+              "timeoutMs": { "type": "number", "minimum": 1 },
+              "command": { "type": "string", "minLength": 1 },
+              "args": { "type": "array", "items": { "type": "string" } },
+              "cwd": { "type": "string" }
+            },
+            "required": ["type", "command"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": { "const": "http" },
+              "description": { "type": "string" },
+              "package": { "type": "string" },
+              "env": { "type": "object", "additionalProperties": { "type": "string" } },
+              "headers": { "type": "object", "additionalProperties": { "type": "string" } },
+              "tokenCacheDir": { "type": "string" },
+              "clientName": { "type": "string" },
+              "oauthRedirectUrl": { "type": "string" },
+              "auth": { "type": "string", "enum": ["oauth"] },
+              "timeoutMs": { "type": "number", "minimum": 1 },
+              "url": { "type": "string", "format": "uri" }
+            },
+            "required": ["type", "url"],
+            "additionalProperties": false
+          }
+        ]
+      }
+    }
+  },
+  "required": ["servers"],
+  "additionalProperties": false
+}
+

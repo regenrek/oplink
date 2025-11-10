@@ -1,7 +1,7 @@
 {
 	"name": "@instructa/oplink",
 	"private": true,
-	"version": "0.0.1",
+	"version": "0.0.2",
 	"engines": {
 		"node": "^18.0.0 || >=20.0.0"
 	},
@@ -10,7 +10,7 @@
 		"url": "git+https://github.com/regenrek/oplink-mcp"
 	},
 	"license": "MIT",
-	"scripts": {
+  "scripts": {
 		"build": "pnpm -r --filter './packages/**' build",
 		"build:test-utils": "pnpm -r --filter './packages/test-utils' build",
 		"cli:dist": "node packages/cli/dist/index.mjs server --preset thinking",
@@ -21,7 +21,8 @@
 		"docs:llms": "npx repomix docs/oplink-docs/content --include '**/*.md' --ignore '**/1.index.md,index.md,*credits*.md,*oplink*' --output docs/oplink-docs/public/llms_full.txt",
 		"docs:dev": "pnpm -r --filter './docs/**' dev",
 		"bootstrap:linear": "tsx scripts/bootstrap-linear.ts",
-		"test": "pnpm run build && vitest",
+    "test": "pnpm run build && vitest",
+    "test:ci": "pnpm run build && vitest run --reporter=dot",
 		"lint": "biome lint",
 		"biome:write-fix": "biome check --write --unsafe",
 		"publish-npm": "pnpm -r --filter='./packages/oplink' run build && tsx scripts/release.ts",

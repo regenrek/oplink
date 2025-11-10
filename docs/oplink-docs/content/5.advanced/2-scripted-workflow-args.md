@@ -3,8 +3,6 @@ title: Scripted Workflow Arguments
 description: Handling MCP-specific parameters with defaults in Oplink scripted workflows
 ---
 
-# Handling MCP-Specific Arguments in Scripted Workflows
-
 Some MCP servers expose tools whose JSON Schemas omit optional fields or require knobs that vary between deployments. Because Oplink executes those tools internally, each scripted workflow should describe the arguments it passes along and provide sensible defaults so users can “just run it” without extra inputs.
 
 ## Recommend pattern

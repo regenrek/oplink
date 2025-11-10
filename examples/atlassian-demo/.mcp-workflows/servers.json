@@ -1,0 +1,35 @@
+{
+  "servers": {
+    "atlassian": {
+      "type": "stdio",
+      "command": "docker",
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "-e", "JIRA_URL",
+        "-e", "JIRA_PERSONAL_TOKEN",
+        "-e", "JIRA_SSL_VERIFY",
+        "-e", "CONFLUENCE_URL",
+        "-e", "CONFLUENCE_PERSONAL_TOKEN",
+        "-e", "CONFLUENCE_SSL_VERIFY",
+        "-e", "JIRA_PROJECTS_FILTER",
+        "-e", "CONFLUENCE_SPACES_FILTER",
+        "-e", "MCP_VERBOSE",
+        "ghcr.io/sooperset/mcp-atlassian:latest"
+      ],
+      "env": {
+        "JIRA_URL": "${JIRA_URL}",
+        "JIRA_PERSONAL_TOKEN": "${JIRA_PERSONAL_TOKEN:-}",
+        "JIRA_SSL_VERIFY": "${JIRA_SSL_VERIFY:-false}",
+        "CONFLUENCE_URL": "${CONFLUENCE_URL}",
+        "CONFLUENCE_PERSONAL_TOKEN": "${CONFLUENCE_PERSONAL_TOKEN:-}",
+        "CONFLUENCE_SSL_VERIFY": "${CONFLUENCE_SSL_VERIFY:-false}",
+        "JIRA_PROJECTS_FILTER": "${JIRA_PROJECTS_FILTER:-}",
+        "CONFLUENCE_SPACES_FILTER": "${CONFLUENCE_SPACES_FILTER:-}",
+        "MCP_VERBOSE": "${MCP_VERBOSE:-true}"
+      },
+      "description": "Atlassian MCP server for Jira and Confluence (Server/DC)"
+    }
+  }
+}

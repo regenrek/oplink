@@ -1,4 +1,5 @@
 {
+  "$schema": "../../../schema/oplink-servers.schema.json",
   "servers": {
     "linear": {
       "type": "stdio",
@@ -6,15 +7,16 @@
       "args": ["-y", "mcp-remote", "https://mcp.linear.app/mcp"],
       "auth": "oauth",
       "clientName": "oplink-linear-demo",
+      "oauthRedirectUrl": "http://127.0.0.1:22227/oauth/callback",
       "tokenCacheDir": "./.tokens/linear",
       "description": "Linear hosted MCP server (OAuth)"
     },
     "discord": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "@saseq/discord-mcp"],
+      "args": ["-y", "@chinchillaenterprises/mcp-discord"],
       "env": {
-        "DISCORD_BOT_TOKEN": "${DISCORD_BOT_TOKEN}"
+        "DISCORD_TOKEN": "${DISCORD_BOT_TOKEN}"
       },
       "description": "Discord MCP server for sending messages via bot"
     }
