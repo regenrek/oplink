@@ -5,18 +5,7 @@ import { dirname, join } from "pathe";
 
 import { defineCommand } from "citty";
 import { consola } from "consola";
-// Prefer workspace import; fallback to monorepo dist when running tests
-async function loadCore() {
-    try {
-        return await import("@oplink/core");
-    } catch {
-        const { fileURLToPath } = await import("node:url");
-        const { dirname, join } = await import("pathe");
-        const here = fileURLToPath(import.meta.url);
-        const fallback = join(dirname(here), "../../../oplink/dist/index.mjs");
-        return await import(fallback);
-    }
-}
+import { createMcpServer, loadAndMergeConfig, startServer } from "@oplink/core";
 
 import { logger } from "../utils/logger";
 import { cwdArgs, logLevelArgs } from "./_shared";
@@ -71,8 +60,7 @@ export default defineCommand({
 			if (ctx.args.logLevel) {
 				process.env.OPLINK_LOG_LEVEL = String(ctx.args.logLevel);
 			}
-				const core = await loadCore();
-				const finalConfig = core.loadAndMergeConfig(configPath);
+				const finalConfig = loadAndMergeConfig(configPath);
 
 			// During server creation we may talk to external MCP servers via mcporter.
 			// Some libraries may still write to STDOUT; temporarily mirror STDOUT to STDERR
@@ -82,9 +70,9 @@ export default defineCommand({
 				return (process.stderr as any).write(chunk, encoding, cb);
 			};
 
-				let server: Awaited<ReturnType<typeof core.createMcpServer>> | null = null;
+				let server: Awaited<ReturnType<typeof createMcpServer>> | null = null;
 				try {
-					server = await core.createMcpServer(finalConfig, version, {
+					server = await createMcpServer(finalConfig, version, {
 						configDir: configPath,
 					});
 				} finally {
@@ -94,7 +82,7 @@ export default defineCommand({
 			if (!server) {
 				throw new Error("MCP server failed to initialize");
 			}
-				await core.startServer(server, configPath);
+				await startServer(server, configPath);
 		} catch (error) {
 			console.error("Failed to start MCP server:", error);
 			process.exit(1);

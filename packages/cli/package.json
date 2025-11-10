@@ -24,7 +24,7 @@
     ".": "./dist/index.mjs",
     "./cli": "./bin/oplink.mjs"
   },
-  "types": "./dist/index.d.ts",
+  
   "bin": {
     "oplink": "bin/oplink.mjs"
   },
@@ -33,8 +33,8 @@
     "bin"
   ],
   "scripts": {
-    "build": "unbuild",
-    "dev": "unbuild --stub",
+    "build": "rolldown -c && node scripts/copy-schemas.mjs",
+    "dev": "rolldown -c --watch",
     "prepublishOnly": "npm run build",
     "release": "npm publish",
     "release:alpha": "npm publish --tag alpha",
@@ -43,7 +43,7 @@
     "test:dist": "node ./bin/oplink.mjs info ./playground"
   },
   "devDependencies": {
-    "@rollup/plugin-yaml": "catalog:cli",
+    "rolldown": "^0.13.0",
     "@types/js-yaml": "catalog:types",
     "@types/node": "catalog:types",
     "@types/semver": "catalog:types",
@@ -55,10 +55,7 @@
     "magicast": "catalog:utils",
     "mri": "catalog:cli",
     "pathe": "catalog:prod",
-    "rollup": "catalog:cli",
-    "rollup-plugin-visualizer": "^5.14.0",
     "typescript": "catalog:cli",
-    "unbuild": "catalog:cli",
     "@oplink/test-utils": "workspace:*",
     "vitest": "catalog:testing"
   },
