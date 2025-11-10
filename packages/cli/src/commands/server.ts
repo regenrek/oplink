@@ -5,8 +5,7 @@ import { dirname, join } from "pathe";
 
 import { defineCommand } from "citty";
 import { consola } from "consola";
-
-// Lazy-load core to work in monorepo tests without requiring a published package
+// Prefer workspace import; fallback to monorepo dist when running tests
 async function loadCore() {
     try {
         return await import("@oplink/core");
@@ -14,7 +13,6 @@ async function loadCore() {
         const { fileURLToPath } = await import("node:url");
         const { dirname, join } = await import("pathe");
         const here = fileURLToPath(import.meta.url);
-        // dist/chunks/server.mjs → ../../../oplink/dist/index.mjs
         const fallback = join(dirname(here), "../../../oplink/dist/index.mjs");
         return await import(fallback);
     }
@@ -70,6 +68,9 @@ export default defineCommand({
 				console.error("Could not determine package version.");
 			}
 
+			if (ctx.args.logLevel) {
+				process.env.OPLINK_LOG_LEVEL = String(ctx.args.logLevel);
+			}
 			const core = await loadCore();
 			const finalConfig = core.loadAndMergeConfig(configPath);
 
@@ -81,7 +82,7 @@ export default defineCommand({
 				return (process.stderr as any).write(chunk, encoding, cb);
 			};
 
-			let server: Awaited<ReturnType<typeof createMcpServer>> | null = null;
+			let server: Awaited<ReturnType<typeof core.createMcpServer>> | null = null;
 			try {
 				server = await core.createMcpServer(finalConfig, version, {
 					configDir: configPath,

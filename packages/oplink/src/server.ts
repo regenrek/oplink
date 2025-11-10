@@ -1180,14 +1180,17 @@ function registerDescribeToolsUtility(
 }
 
 export function loadAndMergeConfig(configPath?: string): Record<string, any> {
+    const isVerbose = (process.env.OPLINK_LOG_LEVEL || "").toLowerCase() === "verbose";
     // Load user configs from .workflows directory if provided
     const userConfig = configPath ? loadConfigSync(configPath) : {};
     if (configPath) {
-        console.error(
-            `Loaded ${Object.keys(userConfig).length} tool configurations from user config directory: ${configPath}`,
-        );
+        if (isVerbose) {
+            console.error(
+                `Loaded ${Object.keys(userConfig).length} tool configurations from user config directory: ${configPath}`,
+            );
+        }
     } else {
-        console.error("No --config specified; starting without user workflows.");
+        if (isVerbose) console.error("No --config specified; starting without user workflows.");
     }
     return userConfig;
 }

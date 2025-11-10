@@ -110,6 +110,7 @@ function mergeTools(targetTools?: any, sourceTools?: any): any {
 export async function loadConfig(
     directoryPath?: string,
 ): Promise<DevToolsConfig> {
+    const isVerbose = (process.env.OPLINK_LOG_LEVEL || "").toLowerCase() === "verbose";
 	if (!directoryPath) {
 		console.error(
 			"No config directory path provided, using default configuration",
@@ -166,7 +167,7 @@ export async function loadConfig(
 		const mergedConfig: DevToolsConfig = {};
 
         for (const filePath of files) {
-            console.error(`Loading config from: ${filePath}`);
+            if (isVerbose) console.error(`Loading config from: ${filePath}`);
 
 			try {
 				const content = fs.readFileSync(filePath, "utf-8");
@@ -202,6 +203,7 @@ export async function loadConfig(
  * @returns {DevToolsConfig} The loaded and merged configuration
  */
 export function loadConfigSync(directoryPath?: string): DevToolsConfig {
+    const isVerbose = (process.env.OPLINK_LOG_LEVEL || "").toLowerCase() === "verbose";
 	if (!directoryPath) {
 		console.error(
 			"No config directory path provided, using default configuration",
@@ -258,7 +260,7 @@ export function loadConfigSync(directoryPath?: string): DevToolsConfig {
 		const mergedConfig: DevToolsConfig = {};
 
         for (const filePath of files) {
-            console.error(`Loading config from: ${filePath}`);
+            if (isVerbose) console.error(`Loading config from: ${filePath}`);
 
 			try {
 				const content = fs.readFileSync(filePath, "utf-8");
