@@ -1341,14 +1341,15 @@ function registerAuthBootstrapTool(
 		};
 	};
 
-	server.tool(
-		toolName,
-		"Warm up OAuth tokens and cached metadata for external MCP servers.",
-		{
-			aliases: z.array(z.string()).describe("Subset of aliases to initialize").optional(),
-			refresh: z.boolean().describe("Force discovery even if cache is warm").optional(),
-		},
-		handler,
-	);
+    server.tool(
+        toolName,
+        "Warm up OAuth tokens and cached metadata for external MCP servers.",
+        // Use plain JSON-like annotations to avoid client-side Zod record handling
+        {
+            aliases: { type: "array", items: { type: "string" }, description: "Subset of aliases to initialize" },
+            refresh: { type: "boolean", description: "Force discovery even if cache is warm" },
+        } as Record<string, any>,
+        handler,
+    );
 	registeredNames.add(toolName);
 }
