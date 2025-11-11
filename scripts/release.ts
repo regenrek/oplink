@@ -138,18 +138,35 @@ function createGitCommitAndTag(version: string) {
 	}
 }
 
+function rewriteCliCoreDependency(newVersion: string) {
+    // Ensure CLI depends on the just-bumped @oplink/core
+    const cliPath = path.resolve("packages/cli");
+    const manifestPath = path.join(cliPath, "package.json");
+    if (!fs.existsSync(manifestPath)) return;
+    const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+    if (manifest?.dependencies?.["@oplink/core"]) {
+        manifest.dependencies["@oplink/core"] = `^${newVersion}`;
+        fs.writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+        console.log(`Rewrote CLI dependency @oplink/core -> ^${newVersion}`);
+    }
+}
+
 async function publishPackages(
     versionBump: "major" | "minor" | "patch" | string = "patch",
 ) {
     ensureCleanWorkingTree();
 
-    // Preflight: verify publishable packages won't break on npm
+    // 1) Bump versions first so we can rewrite internal deps to proper ranges
+    const newVersion = bumpAllVersions(versionBump);
+    rewriteCliCoreDependency(newVersion);
+
+    // 2) Preflight: verify publishable packages won't break on npm
     runPreflightChecks();
 
-    const newVersion = bumpAllVersions(versionBump);
-
+    // 3) Commit + tag new version
     createGitCommitAndTag(newVersion);
 
+    // 4) Publish packages
     for (const target of packageTargets.filter((pkg) => pkg.publish)) {
         const pkgPath = path.resolve(target.dir);
         const manifestPath = path.join(pkgPath, "package.json");

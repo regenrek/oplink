@@ -26,14 +26,16 @@ This is a monorepo with multiple packages:
 - Patch/minor/major bump and publish:
   - `pnpm dlx tsx scripts/release.ts patch` (or `minor`/`major`)
   - Or use a specific version: `pnpm dlx tsx scripts/release.ts 0.1.0`
-- The script will now run a preflight before any version bump/tag/publish:
+- The script runs a preflight before any version bump/tag/publish:
   1. Verify a clean working tree (fails if uncommitted changes exist)
   2. Dependency guard for publishable packages (`oplink`, `@oplink/core`):
      - Rejects runtime specifiers `workspace:` and `catalog:` in `dependencies`, `peerDependencies`, and `optionalDependencies`
-  3. Build once to generate artifacts
+  3. Build packages (Rolldown) and run tests (Vitest, non‑interactive)
   4. Artifact checks:
-     - CLI: `bin/oplink.mjs`, `dist/schema/oplink-workflows.schema.json`, `dist/schema/oplink-servers.schema.json`
+     - CLI must include: `bin/oplink.mjs`, `dist/schema/oplink-workflows.schema.json`, `dist/schema/oplink-servers.schema.json`
+     - Core build output present in `dist/`
   5. `npm pack --dry-run` must succeed for each publishable package
+  6. Sanity: `npx -y oplink@file:<path-to-tgz> --help` works (optional)
   
   If any preflight step fails, the script aborts before changing versions or creating tags.
 
@@ -73,6 +75,14 @@ Post‑publish verification
 - Quick smoke:
   - `npx -y oplink@latest --help`
   - `npx -y oplink@latest validate --config examples/deepwiki-demo/.mcp-workflows`
+  - Fresh project smoke (recommended):
+    ```bash
+    mkdir -p ~/projects/oplink-test && cd ~/projects/oplink-test
+    pnpm init -y && pnpm add -D oplink@latest
+    mkdir -p .mcp-workflows && printf "hello:\n  description: Hello\n  prompt: |\n    # Hello World\n" > .mcp-workflows/hello.yml
+    npx oplink validate --config ./.mcp-workflows
+    npx oplink server --config ./.mcp-workflows # start once to ensure runtime ok
+    ```
 - Push tag created by script is visible: `git tag -l v*`
 
 Deprecate broken versions (if needed)
@@ -100,6 +110,9 @@ Deprecate broken versions (if needed)
   - Ensure build outputs land in `dist/` (schemas/bin). Update build configs if needed.
 - `npm pack --dry-run` fails:
   - Inspect the error, then re-run the release after fixing.
+ - Tests fail locally but pass in CI:
+   - `pnpm store prune && rm -rf node_modules && pnpm install --force`
+   - Re-run: `pnpm -r build && pnpm test:ci`
 
 ## GitHub Releases
 The release script does not automatically create GitHub Releases. After publishing:
