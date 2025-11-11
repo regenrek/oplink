@@ -71,7 +71,7 @@
 		"prompts": "catalog:cli",
 		"release-it": "^17.11.0",
 		"rimraf": "catalog:utils",
-        "rolldown": "1.0.0-beta.49",
+		"rolldown": "1.0.0-beta.49",
 		"semver": "catalog:utils",
 		"simple-git-hooks": "catalog:cli",
 		"tinyexec": "catalog:utils",
@@ -80,7 +80,7 @@
 		"typescript": "catalog:cli",
 		"typescript-eslint": "^8.26.1",
 		"vite": "catalog:cli",
-		"vitest": "catalog:testing",
+		"vitest": "^4.0.8",
 		"vitest-package-exports": "catalog:testing",
 		"wrangler": "^3.1.0",
 		"zod": "catalog:prod"
