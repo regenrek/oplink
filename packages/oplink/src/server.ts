@@ -547,7 +547,26 @@ function registerExternalServerWorkflow(
             let parsedArgs: Record<string, any> = rawArgs;
             const shape = convertJsonSchemaToZodShape(toolInfo.inputSchema);
             if (shape) {
-                parsedArgs = z.object(shape).parse(rawArgs ?? {});
+                try {
+                    parsedArgs = z.object(shape).parse(rawArgs ?? {});
+                } catch (e) {
+                    if (e && typeof e === 'object' && 'issues' in (e as any)) {
+                        // Produce a compact, actionable validation message for agents/clients
+                        const ze = e as any;
+                        const missing = Array.isArray(ze.issues)
+                          ? ze.issues
+                              .filter((i: any) => i.code === 'invalid_type' && i.received === 'undefined')
+                              .map((i: any) => (Array.isArray(i.path) ? i.path.join('.') : String(i.path)))
+                              .filter(Boolean)
+                          : [];
+                        const fields = Object.keys(shape);
+                        const hint = missing.length > 0
+                          ? `Missing required fields: ${missing.join(', ')}`
+                          : `Expected fields: ${fields.join(', ')}`;
+                        throw new Error(`Invalid arguments for ${alias}:${toolInfo.name}. ${hint}`);
+                    }
+                    throw e as any;
+                }
             }
             return await executeExternalTool(alias, toolInfo.name, parsedArgs, configDir);
         } catch (error) {
