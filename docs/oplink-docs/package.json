@@ -6,7 +6,7 @@
 		"build": "nuxt build",
 		"dev": "nuxt dev",
 		"preview": "nuxt preview",
-		"postinstall": "nuxt prepare",
+    "postinstall": "node -e \"if(process.env.NUXT_PREPARE==='1'){process.exit(1)}\" || nuxt prepare",
 		"lint": "eslint .",
 		"typecheck": "nuxt typecheck"
 	},
