@@ -17,7 +17,7 @@
     }
   },
   "scripts": {
-    "build": "rolldown -c && tsc -p tsconfig.json --emitDeclarationOnly --declaration --outDir dist",
+    "build": "pnpm exec rolldown -c && tsc -p tsconfig.json --emitDeclarationOnly --declaration --outDir dist",
     "prepublishOnly": "pnpm run build",
     "test": "pnpm run build && vitest",
     "test:1": "pnpm run build &&vitest run 'CL1'"
