@@ -1,0 +1,19 @@
+{
+  "mcpServers": {
+    "oplink-frontend": {
+      "command": "/absolute/path/to/node", 
+      "args": [
+        "/absolute/path/to/oplink/packages/cli/bin/oplink.mjs",
+        "server",
+        "--config",
+        "/absolute/path/to/oplink/examples/frontend-mcp-demo/.mcp-workflows"
+      ],
+      "env": {
+        "OPLINK_LOG_LEVEL": "verbose",
+        "MCP_TIMEOUT": "15000",
+        "FRONTEND_ROOT": "/absolute/path/to/oplink/examples/frontend-mcp-demo"
+      }
+    }
+  }
+}
+

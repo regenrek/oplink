@@ -75,7 +75,11 @@ export default defineCommand({
 
 				let server: Awaited<ReturnType<typeof createMcpServer>> | null = null;
                 try {
-                    server = await createMcpServer(finalConfig, version, { configDir: configPath });
+                    const skip = /^(1|true|yes)$/i.test(String(process.env.OPLINK_SKIP_SCRIPTED_ERRORS || ""));
+                    server = await createMcpServer(finalConfig, version, {
+                      configDir: configPath,
+                      skipScriptedErrors: skip,
+                    });
                 } finally {
                     (process.stdout as any).write = originalWrite;
                 }

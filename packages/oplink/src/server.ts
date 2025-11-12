@@ -25,8 +25,12 @@ import {
 } from "./external/cache";
 
 interface RegisterOptions {
-	configDir?: string;
-	cacheOptions?: ExternalToolCacheOptions;
+    configDir?: string;
+    cacheOptions?: ExternalToolCacheOptions;
+    // When true, a scripted workflow that fails initialization (e.g. references
+    // unknown external tools) is skipped with a warning instead of throwing.
+    // Defaults to false; the CLI may enable this via env for demos.
+    skipScriptedErrors?: boolean;
 }
 
 type WorkflowRuntimeKind = "prompt" | "scripted" | "external";
@@ -218,29 +222,31 @@ export async function registerToolsFromConfig(
 		await discoveryCache.restore();
 	}
 
-	for (const entry of promptWorkflows) {
-		await registerLocalTool(
-			server,
-			entry.name,
-			entry.config,
-			config,
-			registeredNames,
-			discoveryCache,
-			options.configDir,
-		);
-	}
+    for (const entry of promptWorkflows) {
+        await registerLocalTool(
+            server,
+            entry.name,
+            entry.config,
+            config,
+            registeredNames,
+            discoveryCache,
+            options.configDir,
+            options.skipScriptedErrors === true,
+        );
+    }
 
-	for (const entry of scriptedWorkflows) {
-		await registerLocalTool(
-			server,
-			entry.name,
-			entry.config,
-			config,
-			registeredNames,
-			discoveryCache,
-			options.configDir,
-		);
-	}
+    for (const entry of scriptedWorkflows) {
+        await registerLocalTool(
+            server,
+            entry.name,
+            entry.config,
+            config,
+            registeredNames,
+            discoveryCache,
+            options.configDir,
+            options.skipScriptedErrors === true,
+        );
+    }
 
 	for (const entry of externalWorkflows) {
 		await registerExternalServerWorkflow(
@@ -313,13 +319,14 @@ function generateToolPrompt(
 }
 
 async function registerLocalTool(
-	server: McpServer,
-	configKey: string,
-	toolConfig: Record<string, any>,
-	fullConfig: Record<string, any>,
-	registeredNames: Set<string>,
-	discoveryCache: ExternalToolCache | undefined,
-	configDir?: string,
+    server: McpServer,
+    configKey: string,
+    toolConfig: Record<string, any>,
+    fullConfig: Record<string, any>,
+    registeredNames: Set<string>,
+    discoveryCache: ExternalToolCache | undefined,
+    configDir?: string,
+    allowSkipScriptedErrors: boolean = false,
 ): Promise<void> {
 	const promptFunction = promptFunctions[configKey];
 	const toolName = toolConfig.name || configKey;
@@ -335,22 +342,42 @@ async function registerLocalTool(
 	}
 	const inputParser = inputSchema ? z.object(inputSchema) : undefined;
 
-	const runtime =
-		toolConfig.runtime ?? (toolConfig.steps ? "scripted" : "prompt");
-	if (runtime === "scripted") {
-		await registerScriptedWorkflow(
-			server,
-			toolName,
-			inputSchema,
-			inputParser,
-			descriptionFromConfig(configKey, toolConfig),
-			toolConfig,
-			discoveryCache,
-			configDir,
-			registeredNames,
-		);
-		return;
-	}
+    const runtime =
+        toolConfig.runtime ?? (toolConfig.steps ? "scripted" : "prompt");
+    if (runtime === "scripted") {
+        const allowSkip = allowSkipScriptedErrors === true;
+        if (allowSkip) {
+            try {
+                await registerScriptedWorkflow(
+                    server,
+                    toolName,
+                    inputSchema,
+                    inputParser,
+                    descriptionFromConfig(configKey, toolConfig),
+                    toolConfig,
+                    discoveryCache,
+                    configDir,
+                    registeredNames,
+                );
+            } catch (error) {
+                const message = error instanceof Error ? error.message : String(error ?? "unknown error");
+                console.error(`Skipping scripted workflow '${toolName}' due to initialization error: ${message}`);
+            }
+            return;
+        }
+        await registerScriptedWorkflow(
+            server,
+            toolName,
+            inputSchema,
+            inputParser,
+            descriptionFromConfig(configKey, toolConfig),
+            toolConfig,
+            discoveryCache,
+            configDir,
+            registeredNames,
+        );
+        return;
+    }
 
 	const description = descriptionFromConfig(configKey, toolConfig);
 
@@ -520,7 +547,26 @@ function registerExternalServerWorkflow(
             let parsedArgs: Record<string, any> = rawArgs;
             const shape = convertJsonSchemaToZodShape(toolInfo.inputSchema);
             if (shape) {
-                parsedArgs = z.object(shape).parse(rawArgs ?? {});
+                try {
+                    parsedArgs = z.object(shape).parse(rawArgs ?? {});
+                } catch (e) {
+                    if (e && typeof e === 'object' && 'issues' in (e as any)) {
+                        // Produce a compact, actionable validation message for agents/clients
+                        const ze = e as any;
+                        const missing = Array.isArray(ze.issues)
+                          ? ze.issues
+                              .filter((i: any) => i.code === 'invalid_type' && i.received === 'undefined')
+                              .map((i: any) => (Array.isArray(i.path) ? i.path.join('.') : String(i.path)))
+                              .filter(Boolean)
+                          : [];
+                        const fields = Object.keys(shape);
+                        const hint = missing.length > 0
+                          ? `Missing required fields: ${missing.join(', ')}`
+                          : `Expected fields: ${fields.join(', ')}`;
+                        throw new Error(`Invalid arguments for ${alias}:${toolInfo.name}. ${hint}`);
+                    }
+                    throw e as any;
+                }
             }
             return await executeExternalTool(alias, toolInfo.name, parsedArgs, configDir);
         } catch (error) {
@@ -990,63 +1036,64 @@ function registerDescribeToolsUtility(
 	if (registeredNames.has(toolName)) {
 		return;
 	}
-	const inputShape: Record<string, z.ZodTypeAny> = {
-		workflow: z
-			.string()
-			.describe("Workflow name to inspect (required unless 'workflows' is provided)")
-			.optional(),
-		workflows: z
-			.array(z.string())
-			.describe("Array of workflow names to inspect")
-			.optional(),
-		aliases: z
-			.array(z.string())
-			.describe("Optional list of server aliases to filter")
-			.optional(),
-		search: z
-			.string()
-			.describe("Full-text filter applied to tool names and descriptions")
-			.optional(),
-		refresh: z
-			.boolean()
-			.describe("Force cache refresh before returning results")
-			.optional(),
-		includeSchemas: z
-			.boolean()
-			.describe("Include JSON input schemas in the response (default true)")
-			.optional(),
-		limit: z
-			.number()
-			.int()
-			.positive()
-			.max(200)
-			.describe("Maximum tools per alias (default 50)")
-			.optional(),
-	};
-	const parser = z
-		.object(inputShape)
-		.refine(
-			(value) =>
-				Boolean(value.workflow) ||
-				(Boolean(value.workflows) && (value.workflows?.length ?? 0) > 0),
-			{
-				message: "Specify 'workflow' or 'workflows' to scope describe_tools",
-				path: ["workflow"],
-			},
-		);
+    // Use plain annotations to maximize compatibility with various MCP clients (e.g., Claude CLI)
+    // and avoid edge-cases in Zod validators on the client side.
+    const annotations: Record<string, any> = {
+        workflow: {
+            type: "string",
+            description: "Workflow name to inspect (required unless 'workflows' is provided)",
+        },
+        workflows: {
+            type: "array",
+            items: { type: "string" },
+            description: "Array of workflow names to inspect",
+        },
+        aliases: {
+            type: "array",
+            items: { type: "string" },
+            description: "Optional list of server aliases to filter",
+        },
+        search: {
+            type: "string",
+            description: "Full-text filter applied to tool names and descriptions",
+        },
+        refresh: { type: "boolean", description: "Force cache refresh before returning results" },
+        includeSchemas: { type: "boolean", description: "Include JSON input schemas in the response (default true)" },
+        limit: { type: "number", minimum: 1, maximum: 200, description: "Maximum tools per alias (default 50)" },
+    };
 
 	const handler = async (params?: Record<string, any>) => {
-		try {
-			const parsed = parser.parse(params ?? {});
-			const workflowNames = new Set<string>();
-			if (parsed.workflow) {
-				workflowNames.add(parsed.workflow);
-			}
-			if (parsed.workflows) {
-				for (const name of parsed.workflows) {
-					workflowNames.add(name);
-				}
-			}
+        try {
+            const raw = (params ?? {}) as Record<string, any>;
+            // Manual, permissive parsing to reduce client-side schema friction
+            const parsed = {
+                workflow: typeof raw.workflow === 'string' ? raw.workflow : undefined,
+                workflows: Array.isArray(raw.workflows) ? raw.workflows.filter((v) => typeof v === 'string') : undefined,
+                aliases: Array.isArray(raw.aliases) ? raw.aliases.filter((v) => typeof v === 'string') : undefined,
+                search: typeof raw.search === 'string' ? raw.search : undefined,
+                refresh: typeof raw.refresh === 'boolean' ? raw.refresh : undefined,
+                includeSchemas: typeof raw.includeSchemas === 'boolean' ? raw.includeSchemas : undefined,
+                limit: typeof raw.limit === 'number' ? raw.limit : undefined,
+            } as {
+                workflow?: string;
+                workflows?: string[];
+                aliases?: string[];
+                search?: string;
+                refresh?: boolean;
+                includeSchemas?: boolean;
+                limit?: number;
+            };
+            const workflowNames = new Set<string>();
+            if (parsed.workflow) {
+                workflowNames.add(parsed.workflow);
+            }
+            if (parsed.workflows && parsed.workflows.length > 0) {
+                for (const name of parsed.workflows) workflowNames.add(name);
+            }
+            // Default: show all known workflows when none provided.
+            if (workflowNames.size === 0) {
+                for (const key of workflows.keys()) workflowNames.add(key);
+            }
 			const aliasFilter = new Set(
 				(parsed.aliases ?? []).map((alias: string) => alias.trim()).filter(Boolean),
 			);
@@ -1170,12 +1217,13 @@ function registerDescribeToolsUtility(
 		}
 	};
 
-	server.tool(
-		toolName,
-		"Describe cached MCP tool metadata for a workflow",
-		inputShape,
-		handler,
-	);
+    // Register without a formal parameter schema to maximize client compatibility.
+    // We still validate and interpret inputs manually inside the handler.
+    server.tool(
+        toolName,
+        "Describe cached MCP tool metadata for a workflow",
+        handler,
+    );
 	registeredNames.add(toolName);
 }
 
@@ -1294,14 +1342,10 @@ function registerAuthBootstrapTool(
 		};
 	};
 
-	server.tool(
-		toolName,
-		"Warm up OAuth tokens and cached metadata for external MCP servers.",
-		{
-			aliases: z.array(z.string()).describe("Subset of aliases to initialize").optional(),
-			refresh: z.boolean().describe("Force discovery even if cache is warm").optional(),
-		},
-		handler,
-	);
+    server.tool(
+        toolName,
+        "Warm up OAuth tokens and cached metadata for external MCP servers.",
+        handler,
+    );
 	registeredNames.add(toolName);
 }

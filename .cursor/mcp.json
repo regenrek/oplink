@@ -27,15 +27,20 @@
 				"examples/context7-demo/.mcp-workflows"
 			]
 		},
-		"oplink-frontend": {
-			"command": "node",
-			"args": [
-				"/Users/kregenrek/projects/mcp/oplink/packages/cli/bin/oplink.mjs",
-				"server",
-				"--config",
-				"examples/frontend-mcp-demo/.mcp-workflows"
-			]
-		},
+    "oplink-frontend": {
+      "command": "/Users/kregenrek/.nvm/versions/node/v22.12.0/bin/node",
+      "args": [
+        "/Users/kregenrek/projects/mcp/oplink/packages/cli/bin/oplink.mjs",
+        "server",
+        "--config",
+        "/Users/kregenrek/projects/mcp/oplink/examples/frontend-mcp-demo/.mcp-workflows"
+      ],
+      "env": {
+        "OPLINK_LOG_LEVEL": "verbose",
+        "MCP_TIMEOUT": "15000",
+        "FRONTEND_ROOT": "/Users/kregenrek/projects/mcp/oplink/examples/frontend-mcp-demo"
+      }
+    },
 		"oplink-linear-discord": {
 			"command": "node",
 			"args": [

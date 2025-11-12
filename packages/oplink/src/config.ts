@@ -704,10 +704,12 @@ export function convertParameterToZodSchema(
 				// Create object with specific properties
 				const propertySchemas = convertParametersToZodSchema(param.properties);
 				schema = z.object(propertySchemas);
-			} else {
-				// Default to record of unknown if properties not specified
-				schema = z.record(z.unknown());
-			}
+        } else {
+            // Default to open object if properties not specified; using
+            // passthrough avoids client-side validators that expect a
+            // `keyValidator` shape (seen in some MCP clients).
+            schema = z.object({}).passthrough();
+        }
 			break;
 		case "enum":
 			if (param.enum && param.enum.length > 0) {
