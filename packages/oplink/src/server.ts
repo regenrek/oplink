@@ -4,10 +4,11 @@ import type { ServerToolInfo } from "mcporter";
 import { z } from "zod";
 import type { StepConfig } from "./@types/config";
 import {
-	convertParametersToZodSchema,
-	loadConfigSync,
-	mergeConfigs,
-	validateToolConfig,
+    convertParametersToZodSchema,
+    convertParametersToJsonSchema,
+    loadConfigSync,
+    mergeConfigs,
+    validateToolConfig,
 } from "./config";
 import { promptFunctions } from "./prompts";
 import {
@@ -398,11 +399,14 @@ async function registerLocalTool(
 		}
 	};
 
-	if (inputSchema) {
-		server.tool(toolName, description, inputSchema, registerCallback);
-	} else {
-		server.tool(toolName, description, registerCallback);
-	}
+    // Prefer JSON-schema annotations to avoid client Zod surface; keep
+    // Zod parser internal only (inputParser).
+    const jsonAnnotation = convertParametersToJsonSchema(toolConfig.parameters);
+    if (jsonAnnotation) {
+        server.tool(toolName, description, jsonAnnotation as any, registerCallback);
+    } else {
+        server.tool(toolName, description, registerCallback);
+    }
 
 	registeredNames.add(toolName);
 }
@@ -457,11 +461,12 @@ async function registerScriptedWorkflow(
 		}
 	};
 
-	if (inputShape) {
-		server.tool(toolName, description, inputShape, handler);
-	} else {
-		server.tool(toolName, description, handler);
-	}
+    const jsonAnnotation = convertParametersToJsonSchema(toolConfig.parameters);
+    if (jsonAnnotation) {
+        server.tool(toolName, description, jsonAnnotation as any, handler);
+    } else {
+        server.tool(toolName, description, handler);
+    }
 
 	registeredNames.add(toolName);
 }
@@ -493,24 +498,16 @@ function registerExternalServerWorkflow(
 	const describeCall = buildDescribeCallSnippet(toolName, normalizedAliases);
 	const describeHint = buildDescribeHint(toolName, normalizedAliases, describeCall);
 	const promptWithHint = ensureDescribeHint(promptText, describeHint);
-    const schemaShape: Record<string, z.ZodTypeAny> = {
-        tool: z
-            .string()
-            .describe(
-                `External tool to invoke (run ${describeCall} first, then set this field to the tool name)`,
-            )
-            .optional(),
-        args: z
-            .any()
-            .describe("Arguments object forwarded to the external tool")
-            .optional(),
+    const annotations: Record<string, any> = {
+        type: "object",
+        properties: {
+            tool: { type: "string", description: `External tool to invoke (run ${describeCall} first)` },
+            args: { type: "object", description: "Arguments object forwarded to the external tool" },
+        },
     };
-	if (normalizedAliases.length > 1) {
-		schemaShape.server = z
-			.enum(normalizedAliases as [string, string, ...string[]])
-			.describe("Server alias to use (omit if specifying alias in tool)")
-			.optional();
-	}
+    if (normalizedAliases.length > 1) {
+        annotations.properties.server = { type: "string", enum: normalizedAliases, description: "Server alias to use (omit if prefixing tool)" };
+    }
 
     const handler = async (params?: Record<string, any>) => {
         let aliasUsed: string | undefined;
@@ -582,7 +579,7 @@ function registerExternalServerWorkflow(
         }
     };
 
-	server.tool(toolName, description, schemaShape, handler);
+    server.tool(toolName, description, annotations as any, handler);
 	registeredNames.add(toolName);
 }
 
