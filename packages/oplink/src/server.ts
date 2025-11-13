@@ -216,6 +216,18 @@ export async function registerToolsFromConfig(
 				`Warning: failed to initialize external aliases at startup. You can run external_auth_setup or describe_tools later. Details: ${message}`,
 			);
 		}
+
+		// Register proxy tools for each discovered alias so clients can call
+		// external tools directly without using the generic router.
+		for (const alias of aliasMeta.keys()) {
+			await registerExternalAliasProxies(
+				server,
+				String(alias),
+				discoveryCache,
+				options.configDir!,
+				registeredNames,
+			);
+		}
 	} else if (options.configDir) {
 		discoveryCache = new ExternalToolCache(
 			options.configDir,
@@ -595,6 +607,38 @@ function registerExternalServerWorkflow(
 
     server.tool(toolName, description, annotations as any, handler);
 	registeredNames.add(toolName);
+}
+
+async function registerExternalAliasProxies(
+    server: McpServer,
+    alias: string,
+    cache: ExternalToolCache,
+    configDir: string,
+    registeredNames: Set<string>,
+): Promise<void> {
+    const view = cache.getAliasView(alias);
+    const tools = view?.tools ?? [];
+    for (const info of tools) {
+        const proxyName = `${alias}.${info.name}`;
+        if (registeredNames.has(proxyName)) continue;
+        const description = info.description ? `Proxy for ${alias}:${info.name} — ${info.description}` : `Proxy for ${alias}:${info.name}`;
+        const shape = convertJsonSchemaToZodShape(info.inputSchema);
+        const handler = async (params?: Record<string, any>) => {
+            try {
+                let parsed = params ?? {};
+                if (shape) parsed = z.object(shape).parse(params ?? {});
+                return await executeExternalTool(alias, info.name, parsed, configDir);
+            } catch (error) {
+                return buildToolError(error);
+            }
+        };
+        if (shape) {
+            server.tool(proxyName, description, shape, handler);
+        } else {
+            server.tool(proxyName, description, handler);
+        }
+        registeredNames.add(proxyName);
+    }
 }
 
 function buildDescribeCallSnippet(workflowName: string, aliases: string[]): string {
