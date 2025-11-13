@@ -573,6 +573,7 @@ export function convertParametersToJsonSchema(
 
     // Fix the schema format to be compatible with MCP SDK
     const schema = {
+        $schema: "https://json-schema.org/draft/2020-12/schema",
         type: "object",
         properties,
         ...(required.length > 0 ? { required } : {}),

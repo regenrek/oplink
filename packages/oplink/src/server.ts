@@ -13,9 +13,10 @@ import {
 import { normalizeExternalSchema } from "./schema/convert";
 import { promptFunctions } from "./prompts";
 import {
-	appendFormattedTools,
-	formatToolsList,
-	processTemplate,
+    appendFormattedTools,
+    formatToolsList,
+    processTemplate,
+    getPackageInfo,
 } from "./utils";
 import {
 	ExternalServerError,
@@ -416,6 +417,7 @@ async function registerLocalTool(
 
     // Prefer JSON-schema annotations to avoid client Zod surface; keep
     // Zod parser internal only (inputParser).
+    // For prompt workflows, expose Zod on wire to preserve argument passing in current clients.
     if (inputSchema) server.tool(toolName, description, inputSchema, registerCallback);
     else server.tool(toolName, description, registerCallback);
 
@@ -472,7 +474,8 @@ async function registerScriptedWorkflow(
 		}
 	};
 
-    if (inputShape) server.tool(toolName, description, inputShape, handler);
+    const jsonSchema = convertParametersToJsonSchema(toolConfig.parameters);
+    if (jsonSchema) server.tool(toolName, description, jsonSchema as any, handler);
     else server.tool(toolName, description, handler);
 
 	registeredNames.add(toolName);
@@ -632,11 +635,9 @@ async function registerExternalAliasProxies(
                 return buildToolError(error);
             }
         };
-        if (shape) {
-            server.tool(proxyName, description, shape, handler);
-        } else {
-            server.tool(proxyName, description, handler);
-        }
+        const wireSchema = info.inputSchema ? normalizeExternalSchema(info.inputSchema as any) : undefined;
+        if (wireSchema) server.tool(proxyName, description, wireSchema as any, handler);
+        else server.tool(proxyName, description, handler);
         registeredNames.add(proxyName);
     }
 }

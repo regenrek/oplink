@@ -113,8 +113,9 @@ describe("Tool Parameters Configuration", () => {
 
 		const schema = convertParametersToJsonSchema(parameters);
 
-		expect(schema).toEqual({
-		type: "object",
+  expect(schema).toEqual({
+  $schema: "https://json-schema.org/draft/2020-12/schema",
+  type: "object",
 		properties: {
 			query: {
 			type: "string",
@@ -136,8 +137,9 @@ describe("Tool Parameters Configuration", () => {
 
 		const schema = convertParametersToJsonSchema(parameters);
 
-		expect(schema).toEqual({
-		type: "object",
+  expect(schema).toEqual({
+  $schema: "https://json-schema.org/draft/2020-12/schema",
+  type: "object",
 		properties: {
 			limit: {
 			type: "number",
@@ -160,8 +162,9 @@ describe("Tool Parameters Configuration", () => {
 
 		const schema = convertParametersToJsonSchema(parameters);
 
-		expect(schema).toEqual({
-		type: "object",
+  expect(schema).toEqual({
+  $schema: "https://json-schema.org/draft/2020-12/schema",
+  type: "object",
 		properties: {
 			sortOrder: {
 			type: "string",
@@ -200,8 +203,9 @@ describe("Tool Parameters Configuration", () => {
 
 		const schema = convertParametersToJsonSchema(parameters);
 
-		expect(schema).toEqual({
-		type: "object",
+  expect(schema).toEqual({
+  $schema: "https://json-schema.org/draft/2020-12/schema",
+  type: "object",
 		properties: {
 			query: {
 			type: "string",
@@ -332,8 +336,9 @@ parameterized_tool:
 		config.generate_thought.parameters
 		);
 
-		expect(schema).toEqual({
-		type: "object",
+  expect(schema).toEqual({
+  $schema: "https://json-schema.org/draft/2020-12/schema",
+  type: "object",
 		properties: {
 			thought: {
 			type: "string",

@@ -108,8 +108,8 @@ describe("typed template rendering in scripted args", () => {
 
     const tool = registrations.find((r) => r.name === "demo_workflow");
     expect(tool).toBeDefined();
-    // Validate handler accepts parameters
-    expect(z.object(tool!.schema!).parse({ limit: 5, enabled: false })).toMatchObject({ limit: 5, enabled: false });
+    // Validate handler accepts parameters by calling it (wire schema is JSON Schema)
+    await tool!.handler?.({ limit: 5, enabled: false });
 
     await tool!.handler?.({ limit: 25, enabled: false, filter: { level: 3 }, tags: ["x"] });
     expect(executeExternalToolMock).toHaveBeenCalledWith(
@@ -172,4 +172,3 @@ describe("typed template rendering in scripted args", () => {
     );
   });
 });
-

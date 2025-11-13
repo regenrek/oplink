@@ -9,7 +9,7 @@
 				"examples/atlassian-demo/.mcp-workflows"
 			]
 		},
-		"oplink-deepwiki": {
+		"oplink-deepwiki2": {
 			"command": "node",
 			"args": [
 				"/Users/kregenrek/projects/mcp/oplink/packages/cli/bin/oplink.mjs",

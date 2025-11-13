@@ -108,10 +108,9 @@ describe("scripted workflows", () => {
 	expect(workflowTool).toBeDefined();
 	expect(describeTool).toBeDefined();
 
-	expect(workflowTool!.schema).toBeDefined();
-	expect(z.object(workflowTool!.schema!).parse({ url: "https://example.com" })).toEqual({
-		url: "https://example.com",
-	});
+    expect(workflowTool!.schema).toBeDefined();
+    // Wire schema is JSON Schema now; validate by calling handler
+    await expect(workflowTool!.handler({ url: "https://example.com" })).resolves.toBeDefined();
 
 	const result = await workflowTool!.handler({ url: "https://example.com" });
 		expect(executeExternalToolMock).toHaveBeenNthCalledWith(
