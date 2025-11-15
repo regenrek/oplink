@@ -92,6 +92,7 @@
     ],
     "overrides": {
       "oplink": "workspace:*",
+      "@nuxt/content>zod": "4.1.12",
       "zod": "3.23.8",
       "zod-to-json-schema": "3.24.1"
     }

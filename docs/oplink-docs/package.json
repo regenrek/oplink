@@ -6,7 +6,7 @@
 		"build": "nuxt build",
 		"dev": "nuxt dev",
 		"preview": "nuxt preview",
-    "postinstall": "node -e \"if(process.env.NUXT_PREPARE==='1'){process.exit(1)}\" || nuxt prepare",
+		"postinstall": "node -e \"if(process.env.NUXT_PREPARE==='1'){process.exit(1)}\" || nuxt prepare",
 		"lint": "eslint .",
 		"typecheck": "nuxt typecheck"
 	},
@@ -15,7 +15,6 @@
 		"@iconify-json/lucide": "^1.2.73",
 		"@iconify-json/simple-icons": "^1.2.58",
 		"@iconify-json/vscode-icons": "^1.2.33",
-		"@nuxt/content": "^3.8.0",
 		"@nuxt/image": "^2.0.0",
 		"@nuxt/ui": "^4.1.0",
 		"better-sqlite3": "^12.4.1",
@@ -24,6 +23,7 @@
 		"nuxt-og-image": "^5.1.12"
 	},
 	"devDependencies": {
+		"@nuxt/content": "^3.8.2",
 		"@nuxt/eslint": "^1.10.0",
 		"eslint": "^9.39.1",
 		"tailwindcss": "^4.0.0",
