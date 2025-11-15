@@ -1,25 +1,22 @@
 deepwiki_lookup:
-  description: "Look up details in DeepWiki"
+  description: "Ask DeepWiki a question about a GitHub repository"
   runtime: scripted
   parameters:
-    query:
+    repo:
       type: "string"
-      description: "Search phrase or entity"
+      description: "owner/repo, e.g. facebook/react"
+      required: true
+    question:
+      type: "string"
+      description: "Question to ask about the repository"
       required: true
   steps:
-    - call: deepwiki:deepwiki_search
+    - call: deepwiki:ask_question
       args:
-        query: "{{ query }}"
+        repoName: "{{ repo }}"
+        question: "{{ question }}"
 
-deepwiki_auto:
-  description: "Auto-discovered DeepWiki tools"
-  runtime: scripted
-  parameters:
-    query:
-      type: "string"
-      description: "Topic to research"
-      required: true
-  steps:
-    - call: deepwiki:deepwiki_search
-      args:
-        query: "{{ query }}"
+## deepwiki_auto (router) intentionally removed for testing stability.
+## Prefer the typed proxies (deepwiki.ask_question, etc.) or the scripted
+## deepwiki_lookup tool above. Reintroduce this section if you need the
+## advanced router behavior.

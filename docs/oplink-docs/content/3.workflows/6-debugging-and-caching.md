@@ -5,8 +5,22 @@ description: Inspect tool catalogs, refresh caches, and fix common startup error
 
 Discovery cache
 
-- Oplink caches external tool catalogs for ~5 minutes by default.
-- Force refresh: `describe_tools({ "workflow": "name", "refresh": true })` or call `external_auth_setup({ "refresh": true })`.
+- Oplink caches external tool catalogs (names, descriptions, JSON Schemas) for ~5 minutes by default.
+- `describe_tools` serves results from this cache; passing `refresh: true` asks Oplink to re-discover tools via mcporter before responding.
+- Force refresh for an alias by workflow: `describe_tools({ "workflow": "name", "refresh": true })` or call `external_auth_setup({ "refresh": true })`.
+
+Controlling payload size
+
+- Large servers (like Chrome DevTools) can expose many tools and big schemas.
+- Use `includeSchemas: false` to skip JSON Schema bodies when you only need names/descriptions:
+
+  ```json
+  describe_tools({
+    "workflow": "frontend_debugger",
+    "includeSchemas": false,
+    "limit": 50
+  })
+  ```
 
 Inspect an alias (mcporter CLI)
 

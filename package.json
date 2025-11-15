@@ -91,7 +91,10 @@
       "better-sqlite3"
     ],
     "overrides": {
-      "oplink": "workspace:*"
+      "oplink": "workspace:*",
+      "@nuxt/content>zod": "4.1.12",
+      "zod": "3.23.8",
+      "zod-to-json-schema": "3.24.1"
     }
   },
   "dependencies": {

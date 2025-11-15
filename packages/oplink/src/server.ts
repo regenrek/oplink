@@ -4,16 +4,19 @@ import type { ServerToolInfo } from "mcporter";
 import { z } from "zod";
 import type { StepConfig } from "./@types/config";
 import {
-	convertParametersToZodSchema,
-	loadConfigSync,
-	mergeConfigs,
-	validateToolConfig,
+    convertParametersToZodSchema,
+    convertParametersToJsonSchema,
+    loadConfigSync,
+    mergeConfigs,
+    validateToolConfig,
 } from "./config";
+import { normalizeExternalSchema } from "./schema/convert";
 import { promptFunctions } from "./prompts";
 import {
-	appendFormattedTools,
-	formatToolsList,
-	processTemplate,
+    appendFormattedTools,
+    formatToolsList,
+    processTemplate,
+    getPackageInfo,
 } from "./utils";
 import {
 	ExternalServerError,
@@ -25,8 +28,17 @@ import {
 } from "./external/cache";
 
 interface RegisterOptions {
-	configDir?: string;
-	cacheOptions?: ExternalToolCacheOptions;
+    configDir?: string;
+    cacheOptions?: ExternalToolCacheOptions;
+    // When true, a scripted workflow that fails initialization (e.g. references
+    // unknown external tools) is skipped with a warning instead of throwing.
+    // Defaults to false; the CLI may enable this via env for demos.
+    skipScriptedErrors?: boolean;
+    // When true, register proxy tools for every discovered external MCP tool.
+    // Defaults to false so workflows remain the primary surface.
+    autoRegisterExternalTools?: boolean;
+    // When true, register the internal `oplink_info` helper tool.
+    includeInfoTool?: boolean;
 }
 
 type WorkflowRuntimeKind = "prompt" | "scripted" | "external";
@@ -210,6 +222,20 @@ export async function registerToolsFromConfig(
 				`Warning: failed to initialize external aliases at startup. You can run external_auth_setup or describe_tools later. Details: ${message}`,
 			);
 		}
+
+        if (options.autoRegisterExternalTools) {
+            // Register proxy tools for each discovered alias so clients can call
+            // external tools directly without using the generic router.
+            for (const alias of aliasMeta.keys()) {
+                await registerExternalAliasProxies(
+                    server,
+                    String(alias),
+                    discoveryCache,
+                    options.configDir!,
+                    registeredNames,
+                );
+            }
+        }
 	} else if (options.configDir) {
 		discoveryCache = new ExternalToolCache(
 			options.configDir,
@@ -218,29 +244,31 @@ export async function registerToolsFromConfig(
 		await discoveryCache.restore();
 	}
 
-	for (const entry of promptWorkflows) {
-		await registerLocalTool(
-			server,
-			entry.name,
-			entry.config,
-			config,
-			registeredNames,
-			discoveryCache,
-			options.configDir,
-		);
-	}
+    for (const entry of promptWorkflows) {
+        await registerLocalTool(
+            server,
+            entry.name,
+            entry.config,
+            config,
+            registeredNames,
+            discoveryCache,
+            options.configDir,
+            options.skipScriptedErrors === true,
+        );
+    }
 
-	for (const entry of scriptedWorkflows) {
-		await registerLocalTool(
-			server,
-			entry.name,
-			entry.config,
-			config,
-			registeredNames,
-			discoveryCache,
-			options.configDir,
-		);
-	}
+    for (const entry of scriptedWorkflows) {
+        await registerLocalTool(
+            server,
+            entry.name,
+            entry.config,
+            config,
+            registeredNames,
+            discoveryCache,
+            options.configDir,
+            options.skipScriptedErrors === true,
+        );
+    }
 
 	for (const entry of externalWorkflows) {
 		await registerExternalServerWorkflow(
@@ -263,13 +291,17 @@ export async function registerToolsFromConfig(
 		options.configDir,
 	);
 
-	registerAuthBootstrapTool(
-		server,
-		registeredNames,
-		discoveryCache,
-		aliasMeta,
-		options.configDir,
-	);
+    registerAuthBootstrapTool(
+        server,
+        registeredNames,
+        discoveryCache,
+        aliasMeta,
+        options.configDir,
+    );
+
+    if (options.includeInfoTool) {
+        registerOplinkInfoTool(server, registeredNames);
+    }
 }
 
 /**
@@ -313,13 +345,14 @@ function generateToolPrompt(
 }
 
 async function registerLocalTool(
-	server: McpServer,
-	configKey: string,
-	toolConfig: Record<string, any>,
-	fullConfig: Record<string, any>,
-	registeredNames: Set<string>,
-	discoveryCache: ExternalToolCache | undefined,
-	configDir?: string,
+    server: McpServer,
+    configKey: string,
+    toolConfig: Record<string, any>,
+    fullConfig: Record<string, any>,
+    registeredNames: Set<string>,
+    discoveryCache: ExternalToolCache | undefined,
+    configDir?: string,
+    allowSkipScriptedErrors: boolean = false,
 ): Promise<void> {
 	const promptFunction = promptFunctions[configKey];
 	const toolName = toolConfig.name || configKey;
@@ -335,22 +368,42 @@ async function registerLocalTool(
 	}
 	const inputParser = inputSchema ? z.object(inputSchema) : undefined;
 
-	const runtime =
-		toolConfig.runtime ?? (toolConfig.steps ? "scripted" : "prompt");
-	if (runtime === "scripted") {
-		await registerScriptedWorkflow(
-			server,
-			toolName,
-			inputSchema,
-			inputParser,
-			descriptionFromConfig(configKey, toolConfig),
-			toolConfig,
-			discoveryCache,
-			configDir,
-			registeredNames,
-		);
-		return;
-	}
+    const runtime =
+        toolConfig.runtime ?? (toolConfig.steps ? "scripted" : "prompt");
+    if (runtime === "scripted") {
+        const allowSkip = allowSkipScriptedErrors === true;
+        if (allowSkip) {
+            try {
+                await registerScriptedWorkflow(
+                    server,
+                    toolName,
+                    inputSchema,
+                    inputParser,
+                    descriptionFromConfig(configKey, toolConfig),
+                    toolConfig,
+                    discoveryCache,
+                    configDir,
+                    registeredNames,
+                );
+            } catch (error) {
+                const message = error instanceof Error ? error.message : String(error ?? "unknown error");
+                console.error(`Skipping scripted workflow '${toolName}' due to initialization error: ${message}`);
+            }
+            return;
+        }
+        await registerScriptedWorkflow(
+            server,
+            toolName,
+            inputSchema,
+            inputParser,
+            descriptionFromConfig(configKey, toolConfig),
+            toolConfig,
+            discoveryCache,
+            configDir,
+            registeredNames,
+        );
+        return;
+    }
 
 	const description = descriptionFromConfig(configKey, toolConfig);
 
@@ -371,11 +424,10 @@ async function registerLocalTool(
 		}
 	};
 
-	if (inputSchema) {
-		server.tool(toolName, description, inputSchema, registerCallback);
-	} else {
-		server.tool(toolName, description, registerCallback);
-	}
+    // Use Zod shape for SDK registration (SDK converts to JSON Schema for tools/list).
+    // Keep Zod internal for runtime parsing in handler.
+    if (inputSchema) server.tool(toolName, description, inputSchema, registerCallback);
+    else server.tool(toolName, description, registerCallback);
 
 	registeredNames.add(toolName);
 }
@@ -430,11 +482,8 @@ async function registerScriptedWorkflow(
 		}
 	};
 
-	if (inputShape) {
-		server.tool(toolName, description, inputShape, handler);
-	} else {
-		server.tool(toolName, description, handler);
-	}
+    if (inputShape) server.tool(toolName, description, inputShape, handler);
+    else server.tool(toolName, description, handler);
 
 	registeredNames.add(toolName);
 }
@@ -466,24 +515,14 @@ function registerExternalServerWorkflow(
 	const describeCall = buildDescribeCallSnippet(toolName, normalizedAliases);
 	const describeHint = buildDescribeHint(toolName, normalizedAliases, describeCall);
 	const promptWithHint = ensureDescribeHint(promptText, describeHint);
-    const schemaShape: Record<string, z.ZodTypeAny> = {
-        tool: z
-            .string()
-            .describe(
-                `External tool to invoke (run ${describeCall} first, then set this field to the tool name)`,
-            )
-            .optional(),
-        args: z
-            .any()
-            .describe("Arguments object forwarded to the external tool")
-            .optional(),
+    // Zod shape for the router tool. SDK will expose JSON Schema derived from this.
+    const routerShape: Record<string, z.ZodTypeAny> = {
+        tool: z.string().describe(`External tool to invoke (run ${describeCall} first)`),
+        args: z.object({}).passthrough().optional().describe("Arguments object forwarded to the external tool"),
     };
-	if (normalizedAliases.length > 1) {
-		schemaShape.server = z
-			.enum(normalizedAliases as [string, string, ...string[]])
-			.describe("Server alias to use (omit if specifying alias in tool)")
-			.optional();
-	}
+    if (normalizedAliases.length > 1) {
+        routerShape.server = z.enum(normalizedAliases as [string, ...string[]]).describe("Server alias to use (omit if prefixing tool)");
+    }
 
     const handler = async (params?: Record<string, any>) => {
         let aliasUsed: string | undefined;
@@ -492,7 +531,17 @@ function registerExternalServerWorkflow(
             const normalized = params ?? {};
             let requestedTool = normalized.tool;
 			if (!requestedTool || typeof requestedTool !== "string") {
-				return { content: [{ type: "text", text: promptWithHint }] };
+                const example =
+                  normalizedAliases.length === 1
+                    ? `${toolName}({ "tool": "${normalizedAliases[0]}:ask_question", "args": { "repoName": "owner/repo", "question": "..." } })`
+                    : `${toolName}({ "server": "${normalizedAliases[0]}", "tool": "ask_question", "args": { "repoName": "owner/repo", "question": "..." } })`;
+                const msg = [
+                  `Missing required field 'tool'.`,
+                  `Call this workflow with a JSON object specifying the external tool and arguments.`,
+                  `Example: ${example}`,
+                  `Use ${describeCall} to discover available tools.`,
+                ].join("\n\n");
+                return { content: [{ type: "text", text: msg }], isError: true };
 			}
 			let alias: string | undefined = normalized.server;
 			if (requestedTool.includes(":")) {
@@ -520,7 +569,26 @@ function registerExternalServerWorkflow(
             let parsedArgs: Record<string, any> = rawArgs;
             const shape = convertJsonSchemaToZodShape(toolInfo.inputSchema);
             if (shape) {
-                parsedArgs = z.object(shape).parse(rawArgs ?? {});
+                try {
+                    parsedArgs = z.object(shape).parse(rawArgs ?? {});
+                } catch (e) {
+                    if (e && typeof e === 'object' && 'issues' in (e as any)) {
+                        // Produce a compact, actionable validation message for agents/clients
+                        const ze = e as any;
+                        const missing = Array.isArray(ze.issues)
+                          ? ze.issues
+                              .filter((i: any) => i.code === 'invalid_type' && i.received === 'undefined')
+                              .map((i: any) => (Array.isArray(i.path) ? i.path.join('.') : String(i.path)))
+                              .filter(Boolean)
+                          : [];
+                        const fields = Object.keys(shape);
+                        const hint = missing.length > 0
+                          ? `Missing required fields: ${missing.join(', ')}`
+                          : `Expected fields: ${fields.join(', ')}`;
+                        throw new Error(`Invalid arguments for ${alias}:${toolInfo.name}. ${hint}`);
+                    }
+                    throw e as any;
+                }
             }
             return await executeExternalTool(alias, toolInfo.name, parsedArgs, configDir);
         } catch (error) {
@@ -536,8 +604,46 @@ function registerExternalServerWorkflow(
         }
     };
 
-	server.tool(toolName, description, schemaShape, handler);
+    // Provide concrete examples to help planners/users construct payloads
+    const examples = [
+      normalizedAliases.length === 1
+        ? { tool: `${normalizedAliases[0]}:ask_question`, args: { repoName: "owner/repo", question: "..." } }
+        : { server: normalizedAliases[0], tool: "ask_question", args: { repoName: "owner/repo", question: "..." } },
+    ];
+    // Attach examples via describe hint text (SDK doesn't accept arbitrary annotations in the schema object)
+    const descWithExample = `${promptWithHint}\n\nExample: ${JSON.stringify(examples[0])}`;
+    server.tool(toolName, descWithExample, routerShape, handler);
 	registeredNames.add(toolName);
+}
+
+async function registerExternalAliasProxies(
+    server: McpServer,
+    alias: string,
+    cache: ExternalToolCache,
+    configDir: string,
+    registeredNames: Set<string>,
+): Promise<void> {
+    const view = cache.getAliasView(alias);
+    const tools = view?.tools ?? [];
+    for (const info of tools) {
+        const proxyName = `${alias}.${info.name}`;
+        if (registeredNames.has(proxyName)) continue;
+        const description = info.description ? `Proxy for ${alias}:${info.name} — ${info.description}` : `Proxy for ${alias}:${info.name}`;
+        const shape = convertJsonSchemaToZodShape(info.inputSchema);
+        const handler = async (params?: Record<string, any>) => {
+            try {
+                let parsed = params ?? {};
+                if (shape) parsed = z.object(shape).parse(params ?? {});
+                return await executeExternalTool(alias, info.name, parsed, configDir);
+            } catch (error) {
+                return buildToolError(error);
+            }
+        };
+        const emitSchemas = !/^(0|false|off)$/i.test(String(process.env.OPLINK_PROXY_SCHEMAS || 'on'));
+        if (emitSchemas && shape) server.tool(proxyName, description, shape, handler);
+        else server.tool(proxyName, description, handler);
+        registeredNames.add(proxyName);
+    }
 }
 
 function buildDescribeCallSnippet(workflowName: string, aliases: string[]): string {
@@ -990,63 +1096,64 @@ function registerDescribeToolsUtility(
 	if (registeredNames.has(toolName)) {
 		return;
 	}
-	const inputShape: Record<string, z.ZodTypeAny> = {
-		workflow: z
-			.string()
-			.describe("Workflow name to inspect (required unless 'workflows' is provided)")
-			.optional(),
-		workflows: z
-			.array(z.string())
-			.describe("Array of workflow names to inspect")
-			.optional(),
-		aliases: z
-			.array(z.string())
-			.describe("Optional list of server aliases to filter")
-			.optional(),
-		search: z
-			.string()
-			.describe("Full-text filter applied to tool names and descriptions")
-			.optional(),
-		refresh: z
-			.boolean()
-			.describe("Force cache refresh before returning results")
-			.optional(),
-		includeSchemas: z
-			.boolean()
-			.describe("Include JSON input schemas in the response (default true)")
-			.optional(),
-		limit: z
-			.number()
-			.int()
-			.positive()
-			.max(200)
-			.describe("Maximum tools per alias (default 50)")
-			.optional(),
-	};
-	const parser = z
-		.object(inputShape)
-		.refine(
-			(value) =>
-				Boolean(value.workflow) ||
-				(Boolean(value.workflows) && (value.workflows?.length ?? 0) > 0),
-			{
-				message: "Specify 'workflow' or 'workflows' to scope describe_tools",
-				path: ["workflow"],
-			},
-		);
+    // Use plain annotations to maximize compatibility with various MCP clients (e.g., Claude CLI)
+    // and avoid edge-cases in Zod validators on the client side.
+    const annotations: Record<string, any> = {
+        workflow: {
+            type: "string",
+            description: "Workflow name to inspect (required unless 'workflows' is provided)",
+        },
+        workflows: {
+            type: "array",
+            items: { type: "string" },
+            description: "Array of workflow names to inspect",
+        },
+        aliases: {
+            type: "array",
+            items: { type: "string" },
+            description: "Optional list of server aliases to filter",
+        },
+        search: {
+            type: "string",
+            description: "Full-text filter applied to tool names and descriptions",
+        },
+        refresh: { type: "boolean", description: "Force cache refresh before returning results" },
+        includeSchemas: { type: "boolean", description: "Include JSON input schemas in the response (default true)" },
+        limit: { type: "number", minimum: 1, maximum: 200, description: "Maximum tools per alias (default 50)" },
+    };
 
 	const handler = async (params?: Record<string, any>) => {
-		try {
-			const parsed = parser.parse(params ?? {});
-			const workflowNames = new Set<string>();
-			if (parsed.workflow) {
-				workflowNames.add(parsed.workflow);
-			}
-			if (parsed.workflows) {
-				for (const name of parsed.workflows) {
-					workflowNames.add(name);
-				}
-			}
+        try {
+            const raw = (params ?? {}) as Record<string, any>;
+            // Manual, permissive parsing to reduce client-side schema friction
+            const parsed = {
+                workflow: typeof raw.workflow === 'string' ? raw.workflow : undefined,
+                workflows: Array.isArray(raw.workflows) ? raw.workflows.filter((v) => typeof v === 'string') : undefined,
+                aliases: Array.isArray(raw.aliases) ? raw.aliases.filter((v) => typeof v === 'string') : undefined,
+                search: typeof raw.search === 'string' ? raw.search : undefined,
+                refresh: typeof raw.refresh === 'boolean' ? raw.refresh : undefined,
+                includeSchemas: typeof raw.includeSchemas === 'boolean' ? raw.includeSchemas : undefined,
+                limit: typeof raw.limit === 'number' ? raw.limit : undefined,
+            } as {
+                workflow?: string;
+                workflows?: string[];
+                aliases?: string[];
+                search?: string;
+                refresh?: boolean;
+                includeSchemas?: boolean;
+                limit?: number;
+            };
+            const workflowNames = new Set<string>();
+            if (parsed.workflow) {
+                workflowNames.add(parsed.workflow);
+            }
+            if (parsed.workflows && parsed.workflows.length > 0) {
+                for (const name of parsed.workflows) workflowNames.add(name);
+            }
+            // Default: show all known workflows when none provided.
+            if (workflowNames.size === 0) {
+                for (const key of workflows.keys()) workflowNames.add(key);
+            }
 			const aliasFilter = new Set(
 				(parsed.aliases ?? []).map((alias: string) => alias.trim()).filter(Boolean),
 			);
@@ -1107,7 +1214,11 @@ function registerDescribeToolsUtility(
 						continue;
 					}
 					const view = cache.getAliasView(alias);
-					const tools = view?.tools ?? [];
+            // tools originate from the cache; normalize schemas again defensively
+            const tools = (view?.tools ?? []).map((t) => ({
+              ...t,
+              inputSchema: t.inputSchema ? normalizeExternalSchema(t.inputSchema as any) : t.inputSchema,
+            }));
 					let filtered = tools;
 					if (searchTerm) {
 						filtered = tools.filter((tool) => {
@@ -1135,13 +1246,13 @@ function registerDescribeToolsUtility(
 							}
 							: undefined,
 						truncated: limit > 0 && filtered.length > limited.length,
-						tools: limited.map((tool) => ({
-							name: tool.name,
-							description: tool.description ?? "",
-							recommended:
-								meta.autoAliases.has(alias) || recommended.has(tool.name),
-							inputSchema: includeSchemas ? tool.inputSchema ?? null : undefined,
-						})),
+                        tools: limited.map((tool) => ({
+                            name: tool.name,
+                            description: tool.description ?? "",
+                            recommended:
+                                meta.autoAliases.has(alias) || recommended.has(tool.name),
+                            inputSchema: includeSchemas ? (tool.inputSchema ? normalizeExternalSchema(tool.inputSchema as any) : null) : undefined,
+                        })),
 					});
 				}
 				responses.push({
@@ -1170,12 +1281,13 @@ function registerDescribeToolsUtility(
 		}
 	};
 
-	server.tool(
-		toolName,
-		"Describe cached MCP tool metadata for a workflow",
-		inputShape,
-		handler,
-	);
+    // Register without a formal parameter schema to maximize client compatibility.
+    // We still validate and interpret inputs manually inside the handler.
+    server.tool(
+        toolName,
+        "Describe cached MCP tool metadata for a workflow",
+        handler,
+    );
 	registeredNames.add(toolName);
 }
 
@@ -1294,14 +1406,32 @@ function registerAuthBootstrapTool(
 		};
 	};
 
-	server.tool(
-		toolName,
-		"Warm up OAuth tokens and cached metadata for external MCP servers.",
-		{
-			aliases: z.array(z.string()).describe("Subset of aliases to initialize").optional(),
-			refresh: z.boolean().describe("Force discovery even if cache is warm").optional(),
-		},
-		handler,
-	);
+    server.tool(
+        toolName,
+        "Warm up OAuth tokens and cached metadata for external MCP servers.",
+        handler,
+    );
 	registeredNames.add(toolName);
+}
+
+function registerOplinkInfoTool(
+  server: McpServer,
+  registeredNames: Set<string>,
+): void {
+  const toolName = "oplink_info";
+  if (registeredNames.has(toolName)) return;
+  const handler = async () => {
+    try {
+      const pkg = getPackageInfo();
+      const payload = {
+        name: pkg.name ?? "oplink",
+        version: pkg.version ?? "unknown",
+      };
+      return { content: [{ type: "text", text: JSON.stringify(payload) }] };
+    } catch (e) {
+      return { content: [{ type: "text", text: String(e) }], isError: true };
+    }
+  };
+  server.tool(toolName, "Show Oplink package name and version", handler);
+  registeredNames.add(toolName);
 }

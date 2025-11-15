@@ -557,27 +557,29 @@ function validateNestedParameter(
  * @returns {object} JSON Schema object
  */
 export function convertParametersToJsonSchema(
-	parameters: Record<string, ParameterConfig>,
-): any {
-	const properties: Record<string, any> = {};
-	const required: string[] = [];
+    parameters: Record<string, ParameterConfig> | undefined,
+): any | undefined {
+    if (!parameters || Object.keys(parameters).length === 0) return undefined;
+    const properties: Record<string, any> = {};
+    const required: string[] = [];
 
-	for (const [name, param] of Object.entries(parameters)) {
-		if (param.required) {
-			required.push(name);
-		}
+    for (const [name, param] of Object.entries(parameters)) {
+        if (param.required) {
+            required.push(name);
+        }
 
-		properties[name] = convertParameterToJsonSchema(param);
-	}
+        properties[name] = convertParameterToJsonSchema(param);
+    }
 
-	// Fix the schema format to be compatible with MCP SDK
-	const schema = {
-		type: "object",
-		properties,
-		...(required.length > 0 ? { required } : {}),
-	};
+    // Fix the schema format to be compatible with MCP SDK
+    const schema = {
+        $schema: "https://json-schema.org/draft/2020-12/schema",
+        type: "object",
+        properties,
+        ...(required.length > 0 ? { required } : {}),
+    };
 
-	return schema;
+    return schema;
 }
 
 /**
@@ -651,7 +653,7 @@ export function convertParameterToJsonSchema(param: ParameterConfig): any {
  * @returns {object} Zod schema object for use with MCP SDK
  */
 export function convertParametersToZodSchema(
-	parameters: Record<string, ParameterConfig>,
+    parameters: Record<string, ParameterConfig>,
 ): Record<string, z.ZodTypeAny> {
 	const schemaObj: Record<string, z.ZodTypeAny> = {};
 
@@ -669,6 +671,13 @@ export function convertParametersToZodSchema(
 
 	return schemaObj;
 }
+
+/**
+ * Convert ParameterConfig map to plain JSON Schema object
+ * used for client annotations (to avoid Zod surfaces in some MCP clients).
+ */
+// DEPRECATED duplicate kept to avoid import errors during refactor
+// (single implementation; kept export name stable)
 
 /**
  * Converts a single parameter configuration to a Zod schema
@@ -704,10 +713,12 @@ export function convertParameterToZodSchema(
 				// Create object with specific properties
 				const propertySchemas = convertParametersToZodSchema(param.properties);
 				schema = z.object(propertySchemas);
-			} else {
-				// Default to record of unknown if properties not specified
-				schema = z.record(z.unknown());
-			}
+        } else {
+            // Default to open object if properties not specified; using
+            // passthrough avoids client-side validators that expect a
+            // `keyValidator` shape (seen in some MCP clients).
+            schema = z.object({}).passthrough();
+        }
 			break;
 		case "enum":
 			if (param.enum && param.enum.length > 0) {
