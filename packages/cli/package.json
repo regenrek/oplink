@@ -1,6 +1,6 @@
 {
   "name": "oplink",
-  "version": "0.0.8",
+  "version": "0.0.9",
   "description": "MCP workflow orchestration and registry tool for user-defined workflows",
   "type": "module",
   "keywords": [
@@ -52,7 +52,7 @@
   },
   "packageManager": "pnpm@10.6.3",
   "dependencies": {
-    "@oplink/core": "workspace:*",
+    "@oplink/core": "^0.0.9",
     "@iarna/toml": "^2.2.5",
     "ajv": "^8.17.1",
     "ajv-formats": "^3.0.1",
