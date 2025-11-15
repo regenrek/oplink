@@ -367,8 +367,8 @@ importers:
         specifier: ^2.2.5
         version: 2.2.5
       '@oplink/core':
-        specifier: workspace:*
-        version: link:../oplink
+        specifier: ^0.0.9
+        version: 0.0.9(ws@8.18.3)
       ajv:
         specifier: ^8.17.1
         version: 8.17.1
@@ -2272,6 +2272,9 @@ packages:
   '@opentelemetry/api@1.9.0':
     resolution: {integrity: sha512-3giAOQvZiH5F9bMlMiv8+GSPMeqg0dbaeo58/0SlA9sxSqZhnUtxzX9/2FzyhS9sWQf5S0GJE0AKBrFqjpeYcg==}
     engines: {node: '>=8.0.0'}
+
+  '@oplink/core@0.0.9':
+    resolution: {integrity: sha512-ojNwVWsMSi3wVZ1Ms7My25PlV2AfiwqL7gYhtkk6kDst1Q5/pHhaenJ1qa8QaZFcFRbsk4Fm/R+wK2KvnbhJyA==}
 
   '@oxc-minify/binding-android-arm64@0.96.0':
     resolution: {integrity: sha512-lzeIEMu/v6Y+La5JSesq4hvyKtKBq84cgQpKYTYM/yGuNk2tfd5Ha31hnC+mTh48lp/5vZH+WBfjVUjjINCfug==}
@@ -12512,6 +12515,27 @@ snapshots:
       '@octokit/openapi-types': 24.2.0
 
   '@opentelemetry/api@1.9.0': {}
+
+  '@oplink/core@0.0.9(ws@8.18.3)':
+    dependencies:
+      '@anthropic-ai/sdk': 0.39.0
+      '@leeoniya/ufuzzy': 1.0.19
+      '@modelcontextprotocol/sdk': 1.21.1
+      ajv: 8.17.1
+      ajv-formats: 3.0.1(ajv@8.17.1)
+      dotenv: 16.4.7
+      js-yaml: 4.1.0
+      mcporter: 0.4.1
+      mri: 1.2.0
+      openai: 4.91.1(ws@8.18.3)(zod@3.23.8)
+      pathe: 2.0.3
+      zod: 3.23.8
+      zod-to-json-schema: 3.24.1(zod@3.23.8)
+    transitivePeerDependencies:
+      - '@cfworker/json-schema'
+      - encoding
+      - supports-color
+      - ws
 
   '@oxc-minify/binding-android-arm64@0.96.0':
     optional: true
