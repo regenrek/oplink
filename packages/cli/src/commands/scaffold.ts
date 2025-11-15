@@ -29,7 +29,10 @@ export default defineCommand({
           ensureDir(base);
           const wfPath = path.join(base, "workflows.yaml");
           if (!existsSync(wfPath)) {
-            writeFileSync(wfPath, `# yaml-language-server: $schema=../schema/oplink-workflows.schema.json\n`);
+            writeFileSync(
+              wfPath,
+              "# yaml-language-server: $schema=../schema/oplink-workflows.schema.json\n",
+            );
             logger.info(`Created ${colors.cyan(path.relative(process.cwd(), wfPath))}`);
           }
           const name = String(args.name);
@@ -46,4 +49,3 @@ export default defineCommand({
     logger.info("Use: oplink scaffold workflow <name> [--scripted]");
   },
 });
-

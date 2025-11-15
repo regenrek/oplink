@@ -223,7 +223,7 @@ export async function registerToolsFromConfig(
 			);
 		}
 
-        if (options.autoRegisterExternalTools) {
+        if (options.autoRegisterExternalTools && options.configDir) {
             // Register proxy tools for each discovered alias so clients can call
             // external tools directly without using the generic router.
             for (const alias of aliasMeta.keys()) {
@@ -231,7 +231,7 @@ export async function registerToolsFromConfig(
                     server,
                     String(alias),
                     discoveryCache,
-                    options.configDir!,
+                    options.configDir,
                     registeredNames,
                 );
             }
@@ -352,7 +352,7 @@ async function registerLocalTool(
     registeredNames: Set<string>,
     discoveryCache: ExternalToolCache | undefined,
     configDir?: string,
-    allowSkipScriptedErrors: boolean = false,
+    allowSkipScriptedErrors = false,
 ): Promise<void> {
 	const promptFunction = promptFunctions[configKey];
 	const toolName = toolConfig.name || configKey;
@@ -537,7 +537,7 @@ function registerExternalServerWorkflow(
                     : `${toolName}({ "server": "${normalizedAliases[0]}", "tool": "ask_question", "args": { "repoName": "owner/repo", "question": "..." } })`;
                 const msg = [
                   `Missing required field 'tool'.`,
-                  `Call this workflow with a JSON object specifying the external tool and arguments.`,
+                  "Call this workflow with a JSON object specifying the external tool and arguments.",
                   `Example: ${example}`,
                   `Use ${describeCall} to discover available tools.`,
                 ].join("\n\n");

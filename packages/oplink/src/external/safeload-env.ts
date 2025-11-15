@@ -19,7 +19,7 @@ export function loadEnvForConfigDir(configDir: string): void {
   if (envName) {
     candidates.push(`.env.${envName}.local`, `.env.${envName}`);
   }
-  candidates.push(`.env.local`, `.env`);
+  candidates.push(".env.local", ".env");
 
   // We want highest precedence last when we compute fileVars, but we never
   // override existing shell values. Build a merged map first (last file wins),
@@ -50,4 +50,3 @@ export function loadEnvForConfigDir(configDir: string): void {
     }
   }
 }
-

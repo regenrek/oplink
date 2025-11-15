@@ -85,7 +85,7 @@ export default defineCommand({
       const valid = validateServers(svDoc);
       if (!valid) {
         ok = false;
-        logger.error(colors.red(`servers.json is invalid:`));
+        logger.error(colors.red("servers.json is invalid:"));
         for (const err of validateServers.errors || []) {
           logger.log(` - ${err.instancePath || "/"} ${err.message}`);
         }
