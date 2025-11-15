@@ -10,12 +10,23 @@ orientation: horizontal
 ---
   :::prose-pre
   ---
-  code: npx -y oplink@latest server --config ./.mcp-workflows
+  code: |
+    npx -y oplink@latest server --config ./.mcp-workflows
+
+    # .mcp-workflows/workflows.yaml
+    frontend_debugger:
+      description: "Chrome DevTools helper"
+      prompt: "Use Chrome DevTools MCP tools via this workflow."
   filename: Terminal
   ---
   ```bash
   npx -y oplink@latest server --config ./.mcp-workflows
-  ```
+
+  # .mcp-workflows/workflows.yaml
+  frontend_debugger:
+    description: "Chrome DevTools helper"
+    prompt: "Use Chrome DevTools MCP tools via this workflow."
+  ``` 
   :::
 
 #title
