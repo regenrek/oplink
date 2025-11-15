@@ -44,7 +44,11 @@ universal_helper:
 pnpm -r --filter ./packages/oplink dev -- --config examples/universal-proxy-demo/.mcp-workflows
 ```
 
-Connect your MCP client to the running Oplink server.
+Connect your MCP client to the running Oplink server. By default, only the `universal_helper` and scripted workflows are exposed, plus helper tools (such as `describe_tools` and `external_auth_setup`). If you also want one MCP tool per external tool (e.g., `deepwiki.read_wiki_structure`), start Oplink with:
+
+```bash
+OPLINK_AUTO_REGISTER_EXTERNAL_TOOLS=1 pnpm -r --filter ./packages/oplink dev -- --config examples/universal-proxy-demo/.mcp-workflows
+```
 
 ## Discover tools
 
@@ -88,4 +92,3 @@ screenshot_and_lookup:
 ```
 
 That’s it — mcporter handles discovery, transport, and execution behind the scenes, and Oplink proxies everything through one workflow.
-

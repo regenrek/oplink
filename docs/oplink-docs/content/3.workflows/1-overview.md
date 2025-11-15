@@ -21,7 +21,7 @@ Project setup
 Workflow modes
 
 - Prompt workflows: a single prompt tool (great for heuristics, helper text)
-- Auto-discovery workflows: proxy tools from external servers; Oplink registers `describe_tools` so agents can discover available commands
+- Auto-discovery workflows: route calls to external servers; Oplink registers `describe_tools` so agents can discover available commands using cached schemas
 - Scripted workflows: multi-step orchestration that validates args and calls specific external tools in sequence
 
 Folder layout

@@ -17,8 +17,9 @@ Oplink delegates all communication with external MCP servers to [mcporter](https
 4. Results stream back to Oplink and then to your MCP client (Cursor, Claude, etc.).
 
 ## Discovery and caching
-- Oplink runs `describe_tools` via mcporter to populate an in-memory cache of tool schemas per alias.
-- Workflows that use `externalServers` can proxy any tool from those aliases without copying schemas into your repo.
+- Oplink uses mcporter to run discovery calls (e.g., `list`/`tools/list`) and populate an in-memory cache of tool schemas per alias.
+- `describe_tools` reads from that cache and can optionally include or omit JSON Schemas (`includeSchemas` flag).
+- Workflows that use `externalServers` can route calls to any tool from those aliases without copying schemas into your repo.
 
 ## Auth handoff
 - API keys: use `${ENV_VAR}` placeholders in `servers.json`; Oplink expands them from `process.env` (after auto‑loading `.env` files from your `--config` directory) before creating the mcporter runtime.

@@ -10,46 +10,32 @@ This example integrates the public DeepWiki MCP server (documented at [https://d
 The example includes:
 
 - `.mcp-workflows/servers.json` – registers the HTTP endpoint `https://mcp.deepwiki.com/sse` under the alias `deepwiki`. No API key is required per the official docs.
-- `.mcp-workflows/workflows.yaml` – includes both an explicit proxy (`deepwiki:deepwiki_search`) and an auto-discovery workflow.
+- `.mcp-workflows/workflows.yaml` – defines a scripted workflow (`deepwiki_lookup`) that calls DeepWiki behind the scenes.
 
 ## Workflows
 
 ### `deepwiki_lookup`
 
-Scripted workflow that searches DeepWiki:
+Scripted workflow that calls DeepWiki’s `ask_question` tool:
 
 ```yaml
 deepwiki_lookup:
-  description: "Look up details in DeepWiki"
+  description: "Ask DeepWiki a question about a GitHub repository"
   runtime: scripted
   parameters:
-    query:
+    repo:
       type: "string"
-      description: "Search phrase or entity"
+      description: "owner/repo, e.g. facebook/react"
+      required: true
+    question:
+      type: "string"
+      description: "Question to ask about the repository"
       required: true
   steps:
-    - call: deepwiki:deepwiki_search
+    - call: deepwiki:ask_question
       args:
-        query: "{{ query }}"
-```
-
-### `deepwiki_auto`
-
-Auto-discovery workflow that exposes all DeepWiki tools:
-
-```yaml
-deepwiki_auto:
-  description: "Auto-discovered DeepWiki tools"
-  runtime: scripted
-  parameters:
-    query:
-      type: "string"
-      description: "Topic to research"
-      required: true
-  steps:
-    - call: deepwiki:deepwiki_search
-      args:
-        query: "{{ query }}"
+        repoName: "{{ repo }}"
+        question: "{{ question }}"
 ```
 
 ## Usage
@@ -59,22 +45,26 @@ deepwiki_auto:
    pnpm -r --filter ./packages/oplink dev -- --config examples/deepwiki-demo/.mcp-workflows
    ```
 
-2. **Inspect the server:**
+2. **Inspect the server (optional):**
    ```bash
    npx mcporter list deepwiki --config examples/deepwiki-demo/.mcp-workflows
    ```
 
-3. **Use the workflow:**
+3. **Discover cached tools:**
    ```json
-   describe_tools({ "workflow": "deepwiki_helper" })
+   describe_tools({ "workflow": "deepwiki_lookup" })
    ```
 
 4. **Call the workflow:**
    ```json
    deepwiki_lookup({
-     "query": "react server components"
+     "repo": "shadcn-ui/ui",
+     "question": "How do I use the dialog component?"
    })
    ```
 
-After Oplink starts, connect your MCP client and run `listTools` to confirm `deepwiki:*` tools are available.
+By default, `listTools` will show `deepwiki_lookup` plus helper tools such as `describe_tools` and `external_auth_setup`. If you prefer to expose one MCP tool per DeepWiki tool (e.g., `deepwiki.read_wiki_structure`), start Oplink with:
 
+```bash
+OPLINK_AUTO_REGISTER_EXTERNAL_TOOLS=1 pnpm -r --filter ./packages/oplink dev -- --config examples/deepwiki-demo/.mcp-workflows
+```
